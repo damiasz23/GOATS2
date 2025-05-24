@@ -1,0 +1,144 @@
+<!DOCTYPE html>
+<html lang="pl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Turniej Koszykówki</title>
+  <style>
+    body { font-family: sans-serif; margin: 20px; background: #fafafa; }
+    .category { margin-bottom: 40px; }
+    .category h1 { font-size: 1.5rem; margin: 0; }
+    .group { margin-top: 20px; }
+    .group h2 { font-size: 1.25rem; margin: 0 0 10px; }
+    table { width: 100%; border-collapse: collapse; }
+    table.grid th, table.grid td { border: 1px solid #ccc; padding: 6px; text-align: center; }
+    table.grid th { background: #eee; }
+    table.rank th, table.rank td { border: 1px solid #ddd; padding: 8px; text-align: center; }
+    table.rank th { background: #333; color: #fff; }
+    tr.highlight td { background: rgba(255,215,0,0.3); }
+    /* men/women styling */
+    .category.men table.grid td { background: rgba(173,216,230,0.3); }
+    .category.men tr.highlight td { background: rgba(0,0,255,0.3); color:#fff; }
+    .category.women table.grid td { background: rgba(255,182,193,0.3); }
+    .category.women tr.highlight td { background: rgba(255,0,255,0.3); color:#fff; }
+  </style>
+</head>
+<body>
+  <div id="app">Ładowanie danych...</div>
+<script>
+  const CSV_URL =
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg'
+    + '/pub?gid=1242680440&single=true&output=csv';
+
+  const TEAMS = {
+    'Mężczyźni': {
+      'A': ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
+      'B': ['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
+    },
+    'Kobiety': {
+      'A': ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
+      'B': ['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
+    }
+  };
+
+  async function fetchResults() {
+    const res = await fetch(CSV_URL);
+    const text = await res.text();
+    const lines = text.trim().split(/\r?\n/).slice(1);
+    return lines.flatMap(line => {
+      const parts = line.split(/,|;/).map(c => c.replace(/^"|"$/g, '').trim());
+      const [ , teamA, , teamB, rawA ] = parts;
+      const [ , teamC, , teamD, rawB ] = parts.slice(6);
+      return [
+        { teamA, teamB, rawScore: rawA },
+        { teamA: teamC, teamB: teamD, rawScore: rawB }
+      ];
+    }).filter(r => r.rawScore && r.rawScore !== ':');
+  }
+
+  function initStats() {
+    const stats = {};
+    for (const cat in TEAMS) {
+      stats[cat] = {};
+      for (const grp in TEAMS[cat]) {
+        stats[cat][grp] = {};
+        TEAMS[cat][grp].forEach(name => {
+          stats[cat][grp][name] = { name, play:0, pts:0, for:0, against:0, diff:0 };
+        });
+      }
+    }
+    return stats;
+  }
+
+  function computeStats(results) {
+    const stats = initStats();
+    results.forEach(r => {
+      for (const cat in TEAMS) {
+        for (const grp in TEAMS[cat]) {
+          const names = TEAMS[cat][grp];
+          if (names.includes(r.teamA) && names.includes(r.teamB)) {
+            const [a,b] = r.rawScore.split(':').map(Number);
+            [[r.teamA,a,b],[r.teamB,b,a]].forEach(([team,pts,opp]) => {
+              const s = stats[cat][grp][team];
+              s.play++; s.for+=pts; s.against+=opp; s.diff=s.for-s.against;
+              s.pts += pts>opp?2:1;
+            });
+          }
+        }
+      }
+    });
+    return stats;
+  }
+
+  function renderGrid(stats, cat, grp) {
+    const names = TEAMS[cat][grp];
+    let html = '<table class="grid"><thead><tr><th></th>'
+      + names.map(n=>`<th>${n}</th>`).join('')
+      + '</tr></thead><tbody>';
+    names.forEach(rn=>{
+      html+='<tr><td>'+rn+'</td>';
+      names.forEach(cn=>{
+        if(rn===cn) html+='<td></td>';
+        else {
+          const r=allResults.find(x=>(x.teamA===rn&&x.teamB===cn)||(x.teamA===cn&&x.teamB===rn));
+          let cell='';
+          if(r){const [a,b]=r.rawScore.split(':'); cell=(r.teamA===rn)?`${a}:${b}`:`${b}:${a}`;}
+          html+=`<td>${cell}</td>`;
+        }
+      });
+      html+='</tr>';
+    });
+    html+='</tbody></table>';
+    return html;
+  }
+
+  function renderRank(stats,cat,grp){
+    const arr=Object.values(stats[cat][grp]).sort((a,b)=>b.pts-a.pts||b.diff-a.diff||a.name.localeCompare(b.name));
+    let html='<table class="rank"><thead><tr><th>#</th><th>Drużyna</th><th>M</th><th>Pts</th><th>For</th><th>Against</th><th>Diff</th></tr></thead><tbody>';
+    arr.forEach((t,i)=>html+=`<tr class="${i<2?'highlight':''}"><td>${i+1}</td><td>${t.name}</td><td>${t.play}</td><td>${t.pts}</td><td>${t.for}</td><td>${t.against}</td><td>${t.diff}</td></tr>`);
+    html+='</tbody></table>';
+    return html;
+  }
+
+  let allResults=[];
+  async function init(){
+    const app=document.getElementById('app'); app.innerHTML='Ładowanie danych...';
+    allResults=await fetchResults();
+    const stats=computeStats(allResults);
+    app.innerHTML='';
+    for(const cat in TEAMS){
+      const cd=document.createElement('div'); cd.className='category'; cd.classList.add(cat==='Mężczyźni'?'men':'women');
+      cd.innerHTML=`<h1>${cat}</h1>`;
+      for(const grp in TEAMS[cat]){
+        const gd=document.createElement('div'); gd.className='group'; gd.innerHTML=`<h2>Grupa ${grp}</h2>`;
+        gd.innerHTML+=renderGrid(stats,cat,grp);
+        gd.innerHTML+=renderRank(stats,cat,grp);
+        cd.appendChild(gd);
+      }
+      app.appendChild(cd);
+    }
+  }
+  init(); setInterval(init,60000);
+</script>
+</body>
+</html>
