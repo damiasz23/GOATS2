@@ -6,24 +6,25 @@
   <title>Turniej Koszykówki</title>
   <style>
     body { font-family: sans-serif; margin: 20px; background: #fafafa; }
+    button#refresh { margin-bottom: 10px; padding: 6px 12px; font-size: 1rem; }
     .category { margin-bottom: 40px; }
     .category h1 { font-size: 1.5rem; margin: 0; }
     .group { margin-top: 20px; }
     .group h2 { font-size: 1.25rem; margin: 0 0 10px; }
-    table { width: 100%; border-collapse: collapse; }
+    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
     table.grid th, table.grid td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     table.grid th { background: #eee; }
     table.rank th, table.rank td { border: 1px solid #ddd; padding: 8px; text-align: center; }
     table.rank th { background: #333; color: #fff; }
     tr.highlight td { background: rgba(255,215,0,0.3); }
-    /* men/women styling */
     .category.men table.grid td { background: rgba(173,216,230,0.3); }
-    .category.men tr.highlight td { background: rgba(0,0,255,0.3); color:#fff; }
+    .category.men tr.highlight td { background: rgba(0,0,255,0.3); color: #fff; }
     .category.women table.grid td { background: rgba(255,182,193,0.3); }
-    .category.women tr.highlight td { background: rgba(255,0,255,0.3); color:#fff; }
+    .category.women tr.highlight td { background: rgba(255,0,255,0.3); color: #fff; }
   </style>
 </head>
 <body>
+  <button id="refresh">Odśwież</button>
   <div id="app">Ładowanie danych...</div>
 <script>
   const CSV_URL =
@@ -31,14 +32,10 @@
     + '/pub?gid=1242680440&single=true&output=csv';
 
   const TEAMS = {
-    'Mężczyźni': {
-      'A': ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
-      'B': ['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
-    },
-    'Kobiety': {
-      'A': ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
-      'B': ['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
-    }
+    'Mężczyźni': { 'A': ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
+                   'B': ['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski'] },
+    'Kobiety':    { 'A': ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
+                   'B': ['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik'] }
   };
 
   async function fetchResults() {
@@ -63,7 +60,7 @@
       for (const grp in TEAMS[cat]) {
         stats[cat][grp] = {};
         TEAMS[cat][grp].forEach(name => {
-          stats[cat][grp][name] = { name, play:0, pts:0, for:0, against:0, diff:0 };
+          stats[cat][grp][name] = { name, play: 0, pts: 0, for: 0, against: 0, diff: 0 };
         });
       }
     }
@@ -75,13 +72,13 @@
     results.forEach(r => {
       for (const cat in TEAMS) {
         for (const grp in TEAMS[cat]) {
-          const names = TEAMS[cat][grp];
-          if (names.includes(r.teamA) && names.includes(r.teamB)) {
-            const [a,b] = r.rawScore.split(':').map(Number);
-            [[r.teamA,a,b],[r.teamB,b,a]].forEach(([team,pts,opp]) => {
+          const list = TEAMS[cat][grp];
+          if (list.includes(r.teamA) && list.includes(r.teamB)) {
+            const [a, b] = r.rawScore.split(':').map(Number);
+            [[r.teamA, a, b],[r.teamB, b, a]].forEach(([team, sc, op]) => {
               const s = stats[cat][grp][team];
-              s.play++; s.for+=pts; s.against+=opp; s.diff=s.for-s.against;
-              s.pts += pts>opp?2:1;
+              s.play++; s.for += sc; s.against += op; s.diff = s.for - s.against;
+              s.pts += sc > op ? 2 : 1;
             });
           }
         }
@@ -90,55 +87,81 @@
     return stats;
   }
 
+  // comparator with tiebreakers: pts, diff, head-to-head, name
+  function compareTeams(a, b) {
+    if (b.pts !== a.pts) return b.pts - a.pts;
+    if (b.diff !== a.diff) return b.diff - a.diff;
+    // head-to-head
+    const r = allResults.find(x =>
+      (x.teamA === a.name && x.teamB === b.name) ||
+      (x.teamA === b.name && x.teamB === a.name)
+    );
+    if (r) {
+      const [sA, sB] = r.rawScore.split(':').map(Number);
+      if (r.teamA === a.name) {
+        if (sA !== sB) return sB - sA; // winner negative -> a before
+      } else {
+        if (sB !== sA) return sA - sB;
+      }
+    }
+    return a.name.localeCompare(b.name);
+  }
+
   function renderGrid(stats, cat, grp) {
     const names = TEAMS[cat][grp];
-    let html = '<table class="grid"><thead><tr><th></th>'
-      + names.map(n=>`<th>${n}</th>`).join('')
-      + '</tr></thead><tbody>';
-    names.forEach(rn=>{
-      html+='<tr><td>'+rn+'</td>';
-      names.forEach(cn=>{
-        if(rn===cn) html+='<td></td>';
+    let html = '<table class="grid"><thead><tr><th></th>' + names.map(n => `<th>${n}</th>`).join('') + '</tr></thead><tbody>';
+    names.forEach(rn => {
+      html += `<tr><td>${rn}</td>`;
+      names.forEach(cn => {
+        if (rn === cn) html += '<td></td>';
         else {
-          const r=allResults.find(x=>(x.teamA===rn&&x.teamB===cn)||(x.teamA===cn&&x.teamB===rn));
-          let cell='';
-          if(r){const [a,b]=r.rawScore.split(':'); cell=(r.teamA===rn)?`${a}:${b}`:`${b}:${a}`;}
-          html+=`<td>${cell}</td>`;
+          const r = allResults.find(x => (x.teamA === rn && x.teamB === cn) || (x.teamA === cn && x.teamB === rn));
+          let cell = '';
+          if (r) {
+            const [x, y] = r.rawScore.split(':');
+            cell = (r.teamA === rn) ? `${x}:${y}` : `${y}:${x}`;
+          }
+          html += `<td>${cell}</td>`;
         }
       });
-      html+='</tr>';
+      html += '</tr>';
     });
-    html+='</tbody></table>';
-    return html;
+    return html + '</tbody></table>';
   }
 
-  function renderRank(stats,cat,grp){
-    const arr=Object.values(stats[cat][grp]).sort((a,b)=>b.pts-a.pts||b.diff-a.diff||a.name.localeCompare(b.name));
-    let html='<table class="rank"><thead><tr><th>#</th><th>Drużyna</th><th>M</th><th>Pts</th><th>For</th><th>Against</th><th>Diff</th></tr></thead><tbody>';
-    arr.forEach((t,i)=>html+=`<tr class="${i<2?'highlight':''}"><td>${i+1}</td><td>${t.name}</td><td>${t.play}</td><td>${t.pts}</td><td>${t.for}</td><td>${t.against}</td><td>${t.diff}</td></tr>`);
-    html+='</tbody></table>';
-    return html;
+  function renderRank(stats, cat, grp) {
+    const arr = Object.values(stats[cat][grp]);
+    arr.sort(compareTeams);
+    let html = '<table class="rank"><thead><tr><th>#</th><th>Drużyna</th><th>M</th><th>Pts</th><th>For</th><th>Against</th><th>Diff</th></tr></thead><tbody>';
+    arr.forEach((t, i) => {
+      const cls = (i < 2 && t.play > 0) ? 'highlight' : '';
+      html += `<tr class="${cls}"><td>${i + 1}</td><td>${t.name}</td><td>${t.play}</td><td>${t.pts}</td><td>${t.for}</td><td>${t.against}</td><td>${t.diff}</td></tr>`;
+    });
+    return html + '</tbody></table>';
   }
 
-  let allResults=[];
-  async function init(){
-    const app=document.getElementById('app'); app.innerHTML='Ładowanie danych...';
-    allResults=await fetchResults();
-    const stats=computeStats(allResults);
-    app.innerHTML='';
-    for(const cat in TEAMS){
-      const cd=document.createElement('div'); cd.className='category'; cd.classList.add(cat==='Mężczyźni'?'men':'women');
-      cd.innerHTML=`<h1>${cat}</h1>`;
-      for(const grp in TEAMS[cat]){
-        const gd=document.createElement('div'); gd.className='group'; gd.innerHTML=`<h2>Grupa ${grp}</h2>`;
-        gd.innerHTML+=renderGrid(stats,cat,grp);
-        gd.innerHTML+=renderRank(stats,cat,grp);
+  let allResults = [];
+  async function init() {
+    document.getElementById('app').innerHTML = 'Ładowanie danych...';
+    allResults = await fetchResults();
+    const stats = computeStats(allResults);
+    const app = document.getElementById('app');
+    app.innerHTML = '';
+    for (const cat in TEAMS) {
+      const cd = document.createElement('div'); cd.className = 'category'; cd.classList.add(cat === 'Mężczyźni' ? 'men' : 'women');
+      cd.innerHTML = `<h1>${cat}</h1>`;
+      for (const grp in TEAMS[cat]) {
+        const gd = document.createElement('div'); gd.className = 'group'; gd.innerHTML = `<h2>Grupa ${grp}</h2>`;
+        gd.innerHTML += renderGrid(stats, cat, grp);
+        gd.innerHTML += renderRank(stats, cat, grp);
         cd.appendChild(gd);
       }
       app.appendChild(cd);
     }
   }
-  init(); setInterval(init,60000);
+
+  document.getElementById('refresh').addEventListener('click', init);
+  init();
 </script>
 </body>
 </html>
