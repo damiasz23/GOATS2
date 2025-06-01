@@ -1,222 +1,200 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Turniej – Faza Pucharowa</title>
-<style>
-body{font-family:sans-serif;margin:20px;background:#fafafa}
-button#refresh{margin-bottom:10px;padding:6px 12px;font-size:1rem}
-h1{text-align:center}
-.bracket-container{display:flex;justify-content:space-between;gap:20px;margin-bottom:20px}
-.court{flex:1}
-.court h2{text-align:center;margin-bottom:10px}
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
+  <title>Turniej – Faza Pucharowa</title>
+  <style>
+    body{font-family:sans-serif;margin:20px;background:#fafafa}
+    button#refresh{margin-bottom:10px;padding:6px 12px;font-size:1rem}
+    h1{text-align:center}
+    .bracket-container{display:flex;justify-content:space-between;gap:20px;margin-bottom:20px}
+    .court{flex:1}
+    .court h2{text-align:center;margin-bottom:10px}
 
-table{width:100%;border-collapse:collapse}
-th,td{border:1px solid #ccc;padding:6px;text-align:center}
-th{background:#ddd}
+    table{width:100%;border-collapse:collapse}
+    th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:.9rem}
+    th{background:#ddd}
+    tr.phase td{background:#eee;font-weight:700}
 
-tr.phase td{background:#eee;font-weight:bold}
-tr.women td{background:rgba(255,182,193,.3)}
-tr.men   td{background:rgba(173,216,230,.3)}
-tr.break td{background:#f0f0f0;font-weight:bold}
+    /* poprzednia kolorystyka */
+    tr.women   td{background:rgba(255,182,193,.30)}   /* jasny róż   */
+    tr.men     td{background:rgba(173,216,230,.30)}   /* jasny błękit*/
+    tr.break   td{background:#f0f0f0;font-weight:700}
 
-.finals{margin-top:10px}
-.finals th,.finals td{border:1px solid #ccc;padding:8px}
-</style>
+    .finals{margin-top:10px}
+    .finals table{width:100%}
+    .finals th, .finals td{border:1px solid #ccc;padding:8px;text-align:center}
+    .finals th{background:#ddd}
+  </style>
 </head>
 <body>
-<button id="refresh">Odśwież</button>
-<h1>Faza Pucharowa</h1>
+  <button id="refresh">Odśwież</button>
+  <h1>Faza Pucharowa</h1>
 
-<div class="bracket-container">
-  <div class="court">
-    <h2>Boisko A</h2>
-    <table>
-      <thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
-      <tbody id="court-A-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody>
-    </table>
+  <div class="bracket-container">
+    <div class="court">
+      <h2>Boisko A</h2>
+      <table><thead>
+        <tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>
+      </thead><tbody id="court-A-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody></table>
+    </div>
+
+    <div class="court">
+      <h2>Boisko B</h2>
+      <table><thead>
+        <tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>
+      </thead><tbody id="court-B-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody></table>
+    </div>
   </div>
 
-  <div class="court">
-    <h2>Boisko B</h2>
-    <table>
-      <thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
-      <tbody id="court-B-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody>
-    </table>
+  <div class="finals">
+    <table><thead>
+      <tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>
+    </thead><tbody id="finals-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody></table>
   </div>
-</div>
-
-<div class="finals">
-  <table>
-    <thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
-    <tbody id="finals-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody>
-  </table>
-</div>
 
 <script>
-/* ─────────  konfiguracja  ───────── */
+const REFRESH_MS = 180000; // 3 min
 const CSV_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv';
-const REFRESH_MS = 180000;           // 3 min
-const TEAMS = {
-  'Mężczyźni':{
-    A:['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
-    B:['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
-  },
-  'Kobiety':{
-    A:['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
-    B:['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
-  }
+  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg'
+  + '/pub?gid=1242680440&single=true&output=csv';
+
+const TEAMS={
+ 'Mężczyźni':{
+   A:['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
+   B:['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
+ },
+ 'Kobiety':{
+   A:['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
+   B:['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
+ }
 };
-/* ───────────────────────────────── */
 
 let allResults=[];
 
-/* pobranie i parsowanie CSV */
+// --------- 1. Pobranie CSV ---------
 async function fetchResults(){
-  const text=await (await fetch(CSV_URL)).text();
-  const rows=text.trim().split(/\r?\n/).slice(1);
-  const out=[];
-  rows.forEach(r=>{
-    const c=r.split(/,|;/).map(x=>x.replace(/^"|"$/g,'').trim());
-    [[1,3,4],[7,9,10]].forEach(([iA,iB,iS])=>{
-      const A=c[iA],B=c[iB],raw=c[iS];
-      if(/^\d+:\d+$/.test(raw)) out.push({teamA:A,teamB:B,raw});
-    });
+  const txt=await (await fetch(CSV_URL)).text();
+  const lines=txt.trim().split(/\r?\n/).slice(1);
+  const arr=[];
+  lines.forEach(l=>{
+    const c=l.split(/,|;/).map(x=>x.replace(/^"|"$/g,'').trim());
+    const [ ,tA,,tB,rawA, , ,tC,,tD,rawB]=c;
+    if(/^\d+:\d+$/.test(rawA)&&tA&&tB) arr.push({teamA:tA,teamB:tB,raw:rawA});
+    if(/^\d+:\d+$/.test(rawB)&&tC&&tD) arr.push({teamA:tC,teamB:tD,raw:rawB});
   });
-  return allResults=out;
+  allResults=arr;
 }
 
-/* statystyki grup */
+// --------- 2. Statystyki grup ---------
 function initStats(){
   const s={};
   for(const cat in TEAMS){
     s[cat]={};
-    for(const g in TEAMS[cat])
-      s[cat][g]=TEAMS[cat][g].map(n=>({name:n,pts:0,diff:0}));
+    for(const grp in TEAMS[cat]){
+      s[cat][grp]=TEAMS[cat][grp].map(n=>({name:n,pts:0,diff:0}));
+    }
   }
   return s;
 }
 function computeStats(){
   const st=initStats();
   allResults.forEach(r=>{
-    for(const cat in TEAMS)for(const g in TEAMS[cat]){
-      if(TEAMS[cat][g].includes(r.teamA)&&TEAMS[cat][g].includes(r.teamB)){
+    for(const cat in TEAMS)for(const grp in TEAMS[cat]){
+      const list=TEAMS[cat][grp];
+      if(list.includes(r.teamA)&&list.includes(r.teamB)){
         const [a,b]=r.raw.split(':').map(Number);
-        const A=st[cat][g].find(x=>x.name===r.teamA);
-        const B=st[cat][g].find(x=>x.name===r.teamB);
-        A.pts+=(a>b?2:1); B.pts+=(b>a?2:1);
-        A.diff+=(a-b);    B.diff+=(b-a);
+        const A=st[cat][grp].find(x=>x.name===r.teamA);
+        const B=st[cat][grp].find(x=>x.name===r.teamB);
+        A.pts+=a>b?2:1; B.pts+=b>a?2:1;
+        A.diff+=a-b;    B.diff+=b-a;
       }
     }
   });
   return st;
 }
-function sortTeams(arr){return arr.sort((x,y)=>y.pts-x.pts||y.diff-x.diff||x.name.localeCompare(y.name));}
-
-/* mapowanie nazwa⇄seed (1A,2B,…) */
-function buildSeedMaps(stats){
-  const toSeed={},seedToName={};
-  ['Kobiety','Mężczyźni'].forEach(cat=>{
-    ['A','B'].forEach(g=>{
-      sortTeams([...stats[cat][g]]).forEach((t,i)=>{
-        const seed=`${i+1}${g}`;
-        toSeed[t.name]=seed;
-        seedToName[seed]=t.name;
-      });
-    });
+function sortTeams(arr){
+  return arr.sort((a,b)=>{
+    if(b.pts!==a.pts) return b.pts-a.pts;
+    if(b.diff!==a.diff) return b.diff-a.diff;
+    return a.name.localeCompare(b.name);
   });
-  return {toSeed,seedToName};
 }
 
-/* szukanie wyniku (uwzględnia placeholdery) */
-function findScore(a,b,toSeed){
-  // 1) spróbuj po nazwach
-  for(let i=allResults.length-1;i>=0;i--){
+// --------- 3. Szukanie wyniku ---------
+function findScore(a,b){
+  for(let i=allResults.length-1;i>=0;i--){ // od końca = najnowszy
     const r=allResults[i];
     if((r.teamA===a&&r.teamB===b)||(r.teamA===b&&r.teamB===a)){
       const [x,y]=r.raw.split(':');
       return r.teamA===a?`${x}:${y}`:`${y}:${x}`;
     }
   }
-  // 2) spróbuj po seedach
-  const sA=toSeed[a],sB=toSeed[b];
-  if(sA&&sB){
-    for(let i=allResults.length-1;i>=0;i--){
-      const r=allResults[i];
-      if((r.teamA===sA&&r.teamB===sB)||(r.teamA===sB&&r.teamB===sA)){
-        const [x,y]=r.raw.split(':');
-        return r.teamA===sA?`${x}:${y}`:`${y}:${x}`;
-      }
-    }
-  }
-  return ' : ';
+  return ':'; // brak
 }
 
-/* renderowanie */
+// --------- 4. Budowanie wierszy ---------
 function populate(stats){
-  const {toSeed}=buildSeedMaps(stats);
+  const wA=sortTeams([...stats['Kobiety'].A]);
+  const wB=sortTeams([...stats['Kobiety'].B]);
+  const mA=sortTeams([...stats['Mężczyźni'].A]);
+  const mB=sortTeams([...stats['Mężczyźni'].B]);
 
-  /* półfinaliści */
-  const W_A=sortTeams([...stats.Kobiety.A]);
-  const W_B=sortTeams([...stats.Kobiety.B]);
-  const M_A=sortTeams([...stats['Mężczyźni'].A]);
-  const M_B=sortTeams([...stats['Mężczyźni'].B]);
+  const wSF=[ wA[0]?.name||'1A', wB[1]?.name||'2B', wB[0]?.name||'1B', wA[1]?.name||'2A' ];
+  const mSF=[ mA[0]?.name||'1A', mB[1]?.name||'2B', mB[0]?.name||'1B', mA[1]?.name||'2A' ];
 
-  const wSF=[W_A[0]?.name||'1A',W_B[1]?.name||'2B',W_B[0]?.name||'1B',W_A[1]?.name||'2A'];
-  const mSF=[M_A[0]?.name||'1A',M_B[1]?.name||'2B',M_B[0]?.name||'1B',M_A[1]?.name||'2A'];
+  const seventh = [mA[3]?.name||'4A', mB[3]?.name||'4B'];
+  const fifth   = [mA[2]?.name||'3A', mB[2]?.name||'3B'];
+  const thirdW  = ['1A/2B','1B/2A'];
 
-  const seventh=[M_A[3]?.name||'4A',M_B[3]?.name||'4B'];
-  const fifth  =[M_A[2]?.name||'3A',M_B[2]?.name||'3B'];
+  const rowsA=[
+    {t:'12:30-13:20',p:'Półfinał Kobiet', cls:'women',   A:wSF[0],B:wSF[1]},
+    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',     A:mSF[0],B:mSF[1]},
+    {t:'14:10-15:00',p:'O 7 miejsce',      cls:'men',     A:seventh[0],B:seventh[1]},
+    {t:'15:00-15:50',p:'O 5 miejsce',      cls:'men',     A:fifth[0],  B:fifth[1]},
+    {t:'15:50-16:40',p:'O 3 miejsce',      cls:'women',   A:thirdW[0], B:thirdW[1]},
+    {t:'break',      p:'PRZERWA TECHNICZNA'}
+  ];
+  const rowsB=[
+    {t:'12:30-13:20',p:'Półfinał Kobiet', cls:'women',   A:wSF[2],B:wSF[3]},
+    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',    A:mSF[2],B:mSF[3]},
+    {t:'14:10-15:00',p:'O 5 miejsce',      cls:'women',  A:fifth[0],B:fifth[1]},
+    {t:'15:00-15:50',p:'O 3 miejsce',      cls:'men',    A:mSF[0],B:mSF[2]}, // placeholder – ew. uzupełnić wg regulaminu
+    {t:'break',      p:'PRZERWA TECHNICZNA'}
+  ];
+  const finals=[
+    {t:'17:00-17:50',p:'Finał Kobiet',    cls:'women', A:wSF[0],B:wSF[1]},
+    {t:'17:50-18:40',p:'Finał Mężczyzn',  cls:'men',   A:mSF[0],B:mSF[1]}
+  ];
 
-  function losers(s1,s2,arr){
-    const [a1,b1]=s1.split(':').map(Number),[a2,b2]=s2.split(':').map(Number);
-    if(s1!=' :'&&s2!=' :')
-      return [(a1<b1?arr[0]:arr[1]),(a2<b2?arr[2]:arr[3])];
-    return ['1A/2B','1B/2A'];
-  }
-  const thirdW=losers(findScore(wSF[0],wSF[1],toSeed),findScore(wSF[2],wSF[3],toSeed),wSF);
-  const thirdM=losers(findScore(mSF[0],mSF[1],toSeed),findScore(mSF[2],mSF[3],toSeed),mSF);
+  const render=(rows,tbodyId)=>{
+    let html='';
+    rows.forEach(r=>{
+      if(r.t==='break'){
+        html+=`<tr class="break"><td colspan="6">${r.p}</td></tr>`;
+      }else{
+        const s=findScore(r.A,r.B);
+        html+=`<tr class="phase"><td>${r.t}</td><td colspan="4">${r.p}</td><td></td></tr>`;
+        html+=`<tr class="${r.cls}"><td></td><td></td><td>${r.A}</td><td>vs</td><td>${r.B}</td><td class="result-cell">${s}</td></tr>`;
+      }
+    });
+    document.getElementById(tbodyId).innerHTML=html;
+  };
 
-  function makeRows(defs,cls){
-    return defs.map(({t,p,a,b})=>{
-      if(t==='break')return `<tr class="break"><td colspan="6">${p}</td></tr>`;
-      return `
-        <tr class="phase"><td>${t}</td><td colspan="4">${p}</td><td></td></tr>
-        <tr class="${cls}"><td></td><td></td><td>${a}</td><td>vs</td><td>${b}</td>
-          <td class="result-cell">${findScore(a,b,toSeed)}</td></tr>`;
-    }).join('');
-  }
-
-  document.getElementById('court-A-body').innerHTML = [
-    ...makeRows([{t:'12:30-13:20',p:'Półfinał Kobiet',a:wSF[0],b:wSF[1]} ,'women']),
-    ...makeRows([{t:'13:20-14:10',p:'Półfinał Mężczyzn',a:mSF[0],b:mSF[1]} ,'men'  ]),
-    ...makeRows([{t:'14:10-15:00',p:'O 7 miejsce',a:seventh[0],b:seventh[1]} ,'women']),
-    ...makeRows([{t:'15:00-15:50',p:'O 5 miejsce',a:fifth[0],b:fifth[1]}     ,'men'  ]),
-    ...makeRows([{t:'15:50-16:40',p:'O 3 miejsce',a:thirdW[0],b:thirdW[1]}   ,'women']),
-    '<tr class="break"><td colspan="6">PRZERWA TECHNICZNA</td></tr>'
-  ].join('');
-
-  document.getElementById('court-B-body').innerHTML = [
-    ...makeRows([{t:'12:30-13:20',p:'Półfinał Kobiet',a:wSF[2],b:wSF[3]} ,'women']),
-    ...makeRows([{t:'13:20-14:10',p:'Półfinał Mężczyzn',a:mSF[2],b:mSF[3]} ,'men'  ]),
-    ...makeRows([{t:'14:10-15:00',p:'O 5 miejsce',a:fifth[0],b:fifth[1]}     ,'women']),
-    ...makeRows([{t:'15:00-15:50',p:'O 3 miejsce',a:thirdM[0],b:thirdM[1]}   ,'men'  ]),
-    '<tr class="break"><td colspan="6">PRZERWA TECHNICZNA</td></tr>'
-  ].join('');
-
-  document.getElementById('finals-body').innerHTML = [
-    ...makeRows([{t:'17:00-17:50',p:'Finał Kobiet',a:wSF[0],b:wSF[1]} ,'women']),
-    ...makeRows([{t:'17:50-18:40',p:'Finał Mężczyzn',a:mSF[0],b:mSF[1]} ,'men'  ])
-  ].join('');
+  render(rowsA,'court-A-body');
+  render(rowsB,'court-B-body');
+  render(finals,'finals-body');
 }
 
-/* inicjalizacja + auto-refresh */
+// --------- 5. Init / odśwież ---------
 async function init(){
-  document.querySelectorAll('tbody').forEach(t=>t.innerHTML='<tr><td colspan="6">Ładowanie…</td></tr>');
+  ['court-A-body','court-B-body','finals-body'].forEach(id=>{
+    document.getElementById(id).innerHTML='<tr><td colspan="6">Ładowanie…</td></tr>';
+  });
   await fetchResults();
-  populate(computeStats());
+  const stats=computeStats();
+  populate(stats);
   setTimeout(init,REFRESH_MS);
 }
 document.getElementById('refresh').addEventListener('click',init);
