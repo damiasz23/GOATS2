@@ -1,9 +1,9 @@
 <!DOCTYPE html>
 <html lang="pl">
 <head>
-  <meta charset="UTF-8">
+  <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
-  <title>GOATS 2 - Faza Pucharowa</title>
+  <title>Turniej Koszykówki – Faza Pucharowa</title>
   <style>
     body { font-family: sans-serif; margin: 20px; background: #fafafa; }
     button#refresh { margin-bottom: 10px; padding: 6px 12px; font-size: 1rem; }
@@ -16,7 +16,7 @@
     table th, table td { border: 1px solid #ccc; padding: 6px; text-align: center; font-size: 0.9rem; }
     table th { background: #ddd; }
 
-    .phase-row { background: #bbb; font-weight: bold; }
+    /* kolorowanie wg płci/mechaniki: róż dla Kobiet, niebieski dla Mężczyzn */
     .women-row { background: rgba(255,182,193,0.3); }
     .men-row   { background: rgba(173,216,230,0.3); }
 
@@ -28,18 +28,16 @@
   <button id="refresh">Odśwież</button>
   <h1>Faza Pucharowa</h1>
 
-  <div id="app">
-    <!-- Tutaj wygenerują się tabele Boisko A i Boisko B -->
-  </div>
+  <div id="app">Ładowanie danych…</div>
 
 <script>
   // —————— KONFIGURACJA ——————
-  // Link do publikowanego w Google Sheets csv z arkusza z TERMINARZ_USTALENIA (kolumny E i K):
+  // THIS MUST BE EXACTLY YOUR POBIERANY LINK Z „Termin​arz_USTALENIA” (kolumny E i K).
   const CSV_URL =
     'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg'
     + '/pub?gid=1242680440&single=true&output=csv';
 
-  // STRUKTURA DRUŻYN z fazy grupowej – potrzebna, aby określić TOP2 z każdej grupy:
+  // STRUKTURA DRUŻYN z fazy grupowej – potrzebujemy wiedzieć, kto jest 1A,2A,1B,2B
   const TEAMS_GROUP = {
     'Mężczyźni': {
       'A': ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
@@ -51,32 +49,55 @@
     }
   };
 
-  // —————— POMOCNICZE FUNKCJE DO FAZY GRUPOWEJ ——————
-  // 1) Pobiera WSZYSTKIE wyniki (grupy + puchar) z tego samego CSV.
+  // —————— POBIERANIE WSZYSTKICH WYNIKÓW (POCZĄWSZY OD FAZY GRUPOWEJ) ——————
   async function fetchAllResults() {
     const resp = await fetch(CSV_URL);
+    if (!resp.ok) {
+      console.error('Błąd podczas pobierania CSV:', resp.status, resp.statusText);
+      return [];
+    }
     const txt = await resp.text();
+    // Każdy wiersz to jedna tura turniejowa: najpierw kolumny A–F (Gruppy A/B wyniki), potem kolumny G–M (kolumny E i K dla pucharu).
     const lines = txt.trim().split(/\r?\n/).slice(1);
-    return lines.flatMap(line => {
-      const cols = line.split(/,|;/).map(c => c.replace(/^"|"$/g, '').trim());
-      // GRUPOWE (kolumny C:D i H:I) – ale nie używamy ich tutaj, bo puchar i grupy w jednym
-      // PUCHAROWE (kolumny E, K)
-      const teamA_grpA = cols[1], teamB_grpA = cols[3], rawA_grpA = cols[4];
-      const teamA_grpB = cols[7], teamB_grpB = cols[9], rawB_grpB = cols[10];
-      const out = [];
-      if (teamA_grpA && teamB_grpA && rawA_grpA && rawA_grpA !== ':') {
-        out.push({ teamA: teamA_grpA, teamB: teamB_grpA, rawScore: rawA_grpA });
+    const out = [];
+
+    lines.forEach(line => {
+      // CSV jest rozdzielone przecinkami lub średnikami – usuwamy cudzysłowy i trim:
+      const cols = line.split(/,|;/).map(c => c.replace(/^"|"$/g,'').trim());
+
+      // Kolumny (indeksy): 
+      // 0→A, 1→B, 2→C, 3→D, 4→E, 5→F, 6→G, 7→H, 8→I, 9→J, 10→K, 11→L, 12→M, …
+      // Dla *faz pucharowych* nas interesują tylko E (indeks 4) oraz K (indeks 10),
+      // ale musimy wiedzieć, kto gra w tych kolumnach:
+      //
+      // →   E: [2 drużyny w kolumnach C:D] + wynik w E.
+      // →   K: [2 drużyny w kolumnach I:J] + wynik w K.
+      //
+      // Dlatego:
+      const teamA_E = cols[1];        // kolumna B w arkuszu: nazwa drużyny (kolumny z lewej fazy pucharowej)
+      const teamB_E = cols[3];        // kolumna D w arkuszu: nazwa przeciwnika
+      const raw_E   = cols[4];        // kolumna E: wynik „x:y” lub „:”
+
+      const teamA_K = cols[7];        // kolumna H w arkuszu
+      const teamB_K = cols[9];        // kolumna J w arkuszu
+      const raw_K   = cols[10];       // kolumna K: wynik „x:y” lub „:”
+
+      // Jeżeli w E jest poprawny wynik (nie „:” i nie puste), to dodajemy rekord:
+      if (teamA_E && teamB_E && raw_E && raw_E !== ':') {
+        out.push({ teamA: teamA_E, teamB: teamB_E, rawScore: raw_E });
       }
-      if (teamA_grpB && teamB_grpB && rawB_grpB && rawB_grpB !== ':') {
-        out.push({ teamA: teamA_grpB, teamB: teamB_grpB, rawScore: rawB_grpB });
+      // Jeżeli w K jest poprawny wynik, to dodajemy drugi rekord:
+      if (teamA_K && teamB_K && raw_K && raw_K !== ':') {
+        out.push({ teamA: teamA_K, teamB: teamB_K, rawScore: raw_K });
       }
-      return out;
     });
+
+    return out;
   }
 
-  // 2) Oblicza statystyki tabeli (faza grupowa) na podstawie wyników grupowych:
+  // —————— STATYSTYKI FAZY GRUPOWEJ (dzięki którym wiemy, kto jest 1A,2A,1B,2B) ——————
   function computeGroupStats(allResults) {
-    // Inicjalizujemy strukturę: stats[cat][grp][teamName] = { play, pts, for, against, diff }
+    // Inicjalizujemy: stats[„Mężczyźni”][„A”][nazwa] = { name, play, pts, for, against, diff }
     const stats = {};
     for (let cat of Object.keys(TEAMS_GROUP)) {
       stats[cat] = {};
@@ -87,43 +108,40 @@
         });
       }
     }
-
-    // Iterujemy po wszystkich wynikach (grupy + puchar w jednym zbiorze),
-    // ale zliczamy tylko te, które faktycznie należą do danej grupy.
+    // Iterujemy po *wszystkich* wynikach („out” z fetchAllResults), ale wpływ mają tylko te, które
+    // jednocześnie są w tej samej grupie (np. obie drużyny w listach TEAMS_GROUP[cat][grp]).
     allResults.forEach(r => {
       for (let cat of Object.keys(TEAMS_GROUP)) {
         for (let grp of Object.keys(TEAMS_GROUP[cat])) {
           const list = TEAMS_GROUP[cat][grp];
           if (list.includes(r.teamA) && list.includes(r.teamB)) {
             const [a, b] = r.rawScore.split(':').map(Number);
-            // W przypadku drużyna A:
+            // Drużyna A:
             const sA = stats[cat][grp][r.teamA];
             sA.play++;
-            sA.for += a; 
+            sA.for += a;
             sA.against += b;
             sA.diff = sA.for - sA.against;
-            sA.pts += (a > b) ? 2 : 1;
-            // W przypadku drużyna B:
+            sA.pts += (a > b ? 2 : 1);
+            // Drużyna B:
             const sB = stats[cat][grp][r.teamB];
             sB.play++;
-            sB.for += b; 
+            sB.for += b;
             sB.against += a;
             sB.diff = sB.for - sB.against;
-            sB.pts += (b > a) ? 2 : 1;
+            sB.pts += (b > a ? 2 : 1);
           }
         }
       }
     });
-
     return stats;
   }
 
-  // 3) Funkcja porównująca drużyny, aby posortować je wg:
-  //    (1) większe pts, (2) większe diff, (3) head-to-head, (4) nazwa.
+  // Sortowanie wg 1) pts 2) diff 3) head-to-head 4) nazwa
   function compareTeams(a, b, allResults) {
     if (b.pts !== a.pts) return b.pts - a.pts;
     if (b.diff !== a.diff) return b.diff - a.diff;
-    // HEAD-TO-HEAD
+    // head-to-head
     const head = allResults.find(x =>
       (x.teamA === a.name && x.teamB === b.name) ||
       (x.teamA === b.name && x.teamB === a.name)
@@ -139,47 +157,46 @@
     return a.name.localeCompare(b.name);
   }
 
-  // 4) Zwraca TABLICĘ nazw TOP2 z danej kategorii i grupy (właśnie posortowaną):
+  // Wyciągamy TOP2 (zwracamy [‘Drużyna1’, ‘Drużyna2’])
   function extractTop2(statsForCategoryGroup, allResults) {
     const arr = Object.values(statsForCategoryGroup);
     arr.sort((x, y) => compareTeams(x, y, allResults));
     return arr.slice(0, 2).map(t => t.name);
   }
 
+
   // —————— RENDEROWANIE FAZY PUCHAROWEJ ——————
-
   async function renderPlayoffs() {
-    const container = document.getElementById('app');
-    container.innerHTML = 'Ładowanie danych…';
+    const app = document.getElementById('app');
+    app.innerText = 'Ładowanie danych…';
 
-    // 1) Pobieramy WSZYSTKIE wyniki (faza grupowa + faza pucharowa) w jednym zbiorze:
+    // 1) Pobierz WSZYSTKIE wyniki (grupy + puchar) z arkusza:
     const allResults = await fetchAllResults();
 
-    // 2) Obliczamy statystyki tylko fazy grupowej:
+    // 2) Oblicz statystyki fazy grupowej:
     const groupStats = computeGroupStats(allResults);
 
-    // 3) Wydobywamy TOP2 z każdej grupy:  
-    //   Kobiety:  
-    const topA_w = extractTop2(groupStats['Kobiety']['A'], allResults); // np. ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław']
-    const topB_w = extractTop2(groupStats['Kobiety']['B'], allResults); // np. ['Chyże Laski Poznań','Warszawa']
-    //   Mężczyźni:  
-    const topA_m = extractTop2(groupStats['Mężczyźni']['A'], allResults); // np. ['Poznań Biały','Rybnik Team']
-    const topB_m = extractTop2(groupStats['Mężczyźni']['B'], allResults); // np. ['Zielona Góra','Kołobrzeg']
+    // 3) Wyciągnij 1A,2A,1B,2B dla każdej kategorii:
+    const topA_w = extractTop2(groupStats['Kobiety']['A'], allResults); // [1A_w, 2A_w]
+    const topB_w = extractTop2(groupStats['Kobiety']['B'], allResults); // [1B_w, 2B_w]
+    const topA_m = extractTop2(groupStats['Mężczyźni']['A'], allResults); // [1A_m, 2A_m]
+    const topB_m = extractTop2(groupStats['Mężczyźni']['B'], allResults); // [1B_m, 2B_m]
 
-    // Tablica faz w kolejności wyświetlania (dokładnie jak w arkuszu):
+    // 4) Zbudujmy tablice etapów (kolejność odpowiada wierszom w tabelach):
+    //    Boisko A (z lewej strony)
     const PHASES_A = [
-      { phase: 'Półfinał Kobiet',   teamA: topA_w[0] || '', teamB: topB_w[1] || '' }, // 1A vs 2B
-      { phase: 'Półfinał Mężczyzn', teamA: topA_m[0] || '', teamB: topB_m[1] || '' }, // 1A vs 2B
+      { phase: 'Półfinał Kobiet',   teamA: topA_w[0] || '', teamB: topB_w[1] || '' },
+      { phase: 'Półfinał Mężczyzn', teamA: topA_m[0] || '', teamB: topB_m[1] || '' },
       { phase: 'O 7 miejscę',       teamA: '4A',               teamB: '4B'   },
       { phase: 'O 5 miejscę',       teamA: '3A',               teamB: '3B'   },
       { phase: 'O 3 miejscę',       teamA: '1A/2B',            teamB: '1B/2A'},
-      { phase: 'Finał Kobiet',      teamA: topA_w[0] || '',    teamB: topB_w[1] || '' }, // Finał już po półfinałach
+      { phase: 'Finał Kobiet',      teamA: topA_w[0] || '',    teamB: topB_w[1] || '' },
       { phase: 'Finał Mężczyzn',    teamA: topA_m[0] || '',    teamB: topB_m[1] || '' }
     ];
-
+    //    Boisko B (z prawej strony)
     const PHASES_B = [
-      { phase: 'Półfinał Kobiet',   teamA: topB_w[0] || '', teamB: topA_w[1] || '' }, // 1B vs 2A
-      { phase: 'Półfinał Mężczyzn', teamA: topB_m[0] || '', teamB: topA_m[1] || '' }, // 1B vs 2A
+      { phase: 'Półfinał Kobiet',   teamA: topB_w[0] || '', teamB: topA_w[1] || '' },
+      { phase: 'Półfinał Mężczyzn', teamA: topB_m[0] || '', teamB: topA_m[1] || '' },
       { phase: 'O 7 miejscę',       teamA: '',             teamB: ''        },
       { phase: 'O 5 miejscę',       teamA: '3A',           teamB: '3B'      },
       { phase: 'O 3 miejscę',       teamA: '1A/2B',        teamB: '1B/2A'   },
@@ -187,61 +204,69 @@
       { phase: 'Finał Mężczyzn',    teamA: '',             teamB: ''        }
     ];
 
-    // Pomocnicza funkcja do wyszukiwania wyniku w allResults:
-    function findScore(pa, pb) {
-      if (!pa || !pb) return '';
+    // Pomocnicza funkcja do dopasowania wyniku spośród „allResults”:
+    function findScore(a, b) {
+      if (!a || !b) return '';
       const rec = allResults.find(r =>
-        (r.teamA === pa && r.teamB === pb) ||
-        (r.teamA === pb && r.teamB === pa)
+        (r.teamA === a && r.teamB === b) ||
+        (r.teamA === b && r.teamB === a)
       );
       if (!rec) return '';
       const [x, y] = rec.rawScore.split(':');
-      return (rec.teamA === pa) ? `${x}:${y}` : `${y}:${x}`;
+      return (rec.teamA === a) ? `${x}:${y}` : `${y}:${x}`;
     }
 
-    // 4) Budujemy tabele HTML:
-
-    // Boisko A
-    let htmlA = '<div class="court"><table><thead>' +
-                '<tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>' +
-                '</thead><tbody>';
-    const timesA = ['12:30-13:20','13:20-14:10','14:10-15:00','15:00-15:50','15:50-16:40','17:00-17:50','17:50-18:40'];
+    // 5) Generowanie HTML dla obu boisk:
+    // — Boisko A —
+    let htmlA = '<div class="court"><table><thead>'
+              + '<tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>'
+              + '</thead><tbody>';
+    const times = ['12:30–13:20','13:20–14:10','14:10–15:00','15:00–15:50','15:50–16:40','17:00–17:50','17:50–18:40'];
     for (let i = 0; i < PHASES_A.length; i++) {
       const p = PHASES_A[i];
-      // klasa koloru wiersza: 0,2,4,5 to Kobiety, 1,3,6 to Mężczyźni
-      const cls = (i===0 || i===2 || i===4 || i===5) ? 'women-row' : 'men-row';
-      htmlA += `<tr class="${cls}">` +
-               `<td>${timesA[i]}</td>` +
-               `<td>${p.phase}</td>` +
-               `<td>${p.teamA}</td>` +
-               `<td>vs</td>` +
-               `<td>${p.teamB}</td>` +
-               `<td class="result-cell">${findScore(p.teamA, p.teamB)}</td>` +
-               `</tr>`;
+      // Kolor wiersza: jeśli faza zawiera „Kobiet” → women-row, jeśli „Mężczyzn” → men-row, w pozostałych
+      // placeholderach używamy zgodnie z rysunkiem (co 2 wiersze na zmianę, ale uprościłem: damskie fazy – róż, męskie – niebieski)
+      let cls = '';
+      if (p.phase.includes('Kobiet')) cls = 'women-row';
+      else if (p.phase.includes('Mężczyzn')) cls = 'men-row';
+      // Reszta (O 7, O 5, O 3) przyjmuję wg wzoru: co drugi wiersz na zmianę – nie jest kluczowe
+      else cls = (i % 2 === 0 ? 'women-row' : 'men-row');
+
+      htmlA += `<tr class="${cls}">`
+             + `<td>${times[i]}</td>`
+             + `<td>${p.phase}</td>`
+             + `<td>${p.teamA}</td>`
+             + `<td>vs</td>`
+             + `<td>${p.teamB}</td>`
+             + `<td class="result-cell">${findScore(p.teamA,p.teamB)}</td>`
+             + `</tr>`;
     }
     htmlA += '</tbody></table></div>';
 
-    // Boisko B
-    let htmlB = '<div class="court"><table><thead>' +
-                '<tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>' +
-                '</thead><tbody>';
-    const timesB = ['12:30-13:20','13:20-14:10','14:10-15:00','15:00-15:50','15:50-16:40','17:00-17:50','17:50-18:40'];
+    // — Boisko B —
+    let htmlB = '<div class="court"><table><thead>'
+              + '<tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>'
+              + '</thead><tbody>';
     for (let i = 0; i < PHASES_B.length; i++) {
       const p = PHASES_B[i];
-      const cls = (i===0 || i===2 || i===4 || i===5) ? 'women-row' : 'men-row';
-      htmlB += `<tr class="${cls}">` +
-               `<td>${timesB[i]}</td>` +
-               `<td>${p.phase}</td>` +
-               `<td>${p.teamA}</td>` +
-               `<td>vs</td>` +
-               `<td>${p.teamB}</td>` +
-               `<td class="result-cell">${findScore(p.teamA, p.teamB)}</td>` +
-               `</tr>`;
+      let cls = '';
+      if (p.phase.includes('Kobiet')) cls = 'women-row';
+      else if (p.phase.includes('Mężczyzn')) cls = 'men-row';
+      else cls = (i % 2 === 0 ? 'women-row' : 'men-row');
+
+      htmlB += `<tr class="${cls}">`
+             + `<td>${times[i]}</td>`
+             + `<td>${p.phase}</td>`
+             + `<td>${p.teamA}</td>`
+             + `<td>vs</td>`
+             + `<td>${p.teamB}</td>`
+             + `<td class="result-cell">${findScore(p.teamA,p.teamB)}</td>`
+             + `</tr>`;
     }
     htmlB += '</tbody></table></div>';
 
-    // Pokaż obie tabele obok siebie
-    container.innerHTML = `<div class="court-container">${htmlA}${htmlB}</div>`;
+    // 6) Wstawiamy finalne HTML do kontenera:
+    app.innerHTML = `<div class="court-container">${htmlA}${htmlB}</div>`;
   }
 
   // Obsługa przycisku „Odśwież”
