@@ -11,20 +11,15 @@
     .bracket-container{display:flex;justify-content:space-between;gap:20px;margin-bottom:20px}
     .court{flex:1}
     .court h2{text-align:center;margin-bottom:10px}
-
     table{width:100%;border-collapse:collapse}
     th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:.9rem}
     th{background:#ddd}
     tr.phase td{background:#eee;font-weight:700}
-
-    /* poprzednia kolorystyka */
-    tr.women   td{background:rgba(255,182,193,.30)}   /* jasny róż   */
-    tr.men     td{background:rgba(173,216,230,.30)}   /* jasny błękit*/
-    tr.break   td{background:#f0f0f0;font-weight:700}
-
+    tr.women td{background:rgba(255,182,193,.30)}
+    tr.men   td{background:rgba(173,216,230,.30)}
+    tr.break td{background:#f0f0f0;font-weight:700}
     .finals{margin-top:10px}
-    .finals table{width:100%}
-    .finals th, .finals td{border:1px solid #ccc;padding:8px;text-align:center}
+    .finals th,.finals td{border:1px solid #ccc;padding:8px;text-align:center}
     .finals th{background:#ddd}
   </style>
 </head>
@@ -55,17 +50,18 @@
   </div>
 
 <script>
-const REFRESH_MS = 180000; // 3 min
-const CSV_URL =
-  'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg'
-  + '/pub?gid=1242680440&single=true&output=csv';
+const REFRESH_MS = 180000;                                       // 3 min
+const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv';
+
+// --- normalizacja napisu: usuń nadmiarowe spacje + trim ------------------
+const norm = s => s.replace(/\s+/g,' ').trim().toLowerCase();
 
 const TEAMS={
- 'Mężczyźni':{
+ 'mężczyźni':{
    A:['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
    B:['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
  },
- 'Kobiety':{
+ 'kobiety':{
    A:['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
    B:['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
  }
@@ -73,7 +69,9 @@ const TEAMS={
 
 let allResults=[];
 
-// --------- 1. Pobranie CSV ---------
+// -------------------------------------------------------------------------
+// 1. Pobranie CSV i wyciągnięcie tylko wierszy z wynikiem X:Y
+// -------------------------------------------------------------------------
 async function fetchResults(){
   const txt=await (await fetch(CSV_URL)).text();
   const lines=txt.trim().split(/\r?\n/).slice(1);
@@ -87,7 +85,9 @@ async function fetchResults(){
   allResults=arr;
 }
 
-// --------- 2. Statystyki grup ---------
+// -------------------------------------------------------------------------
+// 2. Liczenie tabel grupowych (na potrzeby kolejności 1A/2B itd.)
+// -------------------------------------------------------------------------
 function initStats(){
   const s={};
   for(const cat in TEAMS){
@@ -103,98 +103,85 @@ function computeStats(){
   allResults.forEach(r=>{
     for(const cat in TEAMS)for(const grp in TEAMS[cat]){
       const list=TEAMS[cat][grp];
-      if(list.includes(r.teamA)&&list.includes(r.teamB)){
+      if(list.some(x=>norm(x)===norm(r.teamA)) && list.some(x=>norm(x)===norm(r.teamB))){
         const [a,b]=r.raw.split(':').map(Number);
-        const A=st[cat][grp].find(x=>x.name===r.teamA);
-        const B=st[cat][grp].find(x=>x.name===r.teamB);
-        A.pts+=a>b?2:1; B.pts+=b>a?2:1;
-        A.diff+=a-b;    B.diff+=b-a;
+        const A=st[cat][grp].find(x=>norm(x.name)===norm(r.teamA));
+        const B=st[cat][grp].find(x=>norm(x.name)===norm(r.teamB));
+        A.pts+=a>b?2:1; B.pts+=b>a?2:1; A.diff+=a-b; B.diff+=b-a;
       }
     }
   });
   return st;
 }
-function sortTeams(arr){
-  return arr.sort((a,b)=>{
-    if(b.pts!==a.pts) return b.pts-a.pts;
-    if(b.diff!==a.diff) return b.diff-a.diff;
-    return a.name.localeCompare(b.name);
-  });
-}
+const sortTeams=a=>a.sort((x,y)=>y.pts-x.pts||y.diff-x.diff||x.name.localeCompare(y.name));
 
-// --------- 3. Szukanie wyniku ---------
+// -------------------------------------------------------------------------
+// 3. Znajdź najświeższy wynik dla pary (a,b)
+// -------------------------------------------------------------------------
 function findScore(a,b){
-  for(let i=allResults.length-1;i>=0;i--){ // od końca = najnowszy
+  const A=norm(a), B=norm(b);
+  for(let i=allResults.length-1;i>=0;i--){
     const r=allResults[i];
-    if((r.teamA===a&&r.teamB===b)||(r.teamA===b&&r.teamB===a)){
-      const [x,y]=r.raw.split(':');
-      return r.teamA===a?`${x}:${y}`:`${y}:${x}`;
+    if(norm(r.teamA)===A&&norm(r.teamB)===B) return r.raw;
+    if(norm(r.teamA)===B&&norm(r.teamB)===A){
+      const [x,y]=r.raw.split(':');               // odwracamy kolejność
+      return `${y}:${x}`;
     }
   }
-  return ':'; // brak
+  return ':';                                     // brak
 }
 
-// --------- 4. Budowanie wierszy ---------
+// -------------------------------------------------------------------------
+// 4. Budowanie tabel
+// -------------------------------------------------------------------------
 function populate(stats){
-  const wA=sortTeams([...stats['Kobiety'].A]);
-  const wB=sortTeams([...stats['Kobiety'].B]);
-  const mA=sortTeams([...stats['Mężczyźni'].A]);
-  const mB=sortTeams([...stats['Mężczyźni'].B]);
+  const wA=sortTeams([...stats.kobiety.A]);
+  const wB=sortTeams([...stats.kobiety.B]);
+  const mA=sortTeams([...stats.mężczyźni.A]);
+  const mB=sortTeams([...stats.mężczyźni.B]);
 
   const wSF=[ wA[0]?.name||'1A', wB[1]?.name||'2B', wB[0]?.name||'1B', wA[1]?.name||'2A' ];
   const mSF=[ mA[0]?.name||'1A', mB[1]?.name||'2B', mB[0]?.name||'1B', mA[1]?.name||'2A' ];
 
-  const seventh = [mA[3]?.name||'4A', mB[3]?.name||'4B'];
-  const fifth   = [mA[2]?.name||'3A', mB[2]?.name||'3B'];
-  const thirdW  = ['1A/2B','1B/2A'];
-
   const rowsA=[
-    {t:'12:30-13:20',p:'Półfinał Kobiet', cls:'women',   A:wSF[0],B:wSF[1]},
-    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',     A:mSF[0],B:mSF[1]},
-    {t:'14:10-15:00',p:'O 7 miejsce',      cls:'men',     A:seventh[0],B:seventh[1]},
-    {t:'15:00-15:50',p:'O 5 miejsce',      cls:'men',     A:fifth[0],  B:fifth[1]},
-    {t:'15:50-16:40',p:'O 3 miejsce',      cls:'women',   A:thirdW[0], B:thirdW[1]},
-    {t:'break',      p:'PRZERWA TECHNICZNA'}
+    {t:'12:30-13:20',p:'Półfinał Kobiet',cls:'women',A:wSF[0],B:wSF[1]},
+    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',A:mSF[0],B:mSF[1]},
+    {t:'14:10-15:00',p:'O 7 miejsce',cls:'men',A:mA[3]?.name||'4A',B:mB[3]?.name||'4B'},
+    {t:'15:00-15:50',p:'O 5 miejsce',cls:'men',A:mA[2]?.name||'3A',B:mB[2]?.name||'3B'},
+    {t:'15:50-16:40',p:'O 3 miejsce',cls:'women',A:'1A/2B',B:'1B/2A'},
+    {t:'break',p:'PRZERWA TECHNICZNA'}
   ];
   const rowsB=[
-    {t:'12:30-13:20',p:'Półfinał Kobiet', cls:'women',   A:wSF[2],B:wSF[3]},
-    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',    A:mSF[2],B:mSF[3]},
-    {t:'14:10-15:00',p:'O 5 miejsce',      cls:'women',  A:fifth[0],B:fifth[1]},
-    {t:'15:00-15:50',p:'O 3 miejsce',      cls:'men',    A:mSF[0],B:mSF[2]}, // placeholder – ew. uzupełnić wg regulaminu
-    {t:'break',      p:'PRZERWA TECHNICZNA'}
+    {t:'12:30-13:20',p:'Półfinał Kobiet',cls:'women',A:wSF[2],B:wSF[3]},
+    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',A:mSF[2],B:mSF[3]},
+    {t:'14:10-15:00',p:'O 5 miejsce',cls:'women',A:mA[2]?.name||'3A',B:mB[2]?.name||'3B'},
+    {t:'15:00-15:50',p:'O 3 miejsce',cls:'men',A:'1A/2B',B:'1B/2A'},
+    {t:'break',p:'PRZERWA TECHNICZNA'}
   ];
   const finals=[
-    {t:'17:00-17:50',p:'Finał Kobiet',    cls:'women', A:wSF[0],B:wSF[1]},
-    {t:'17:50-18:40',p:'Finał Mężczyzn',  cls:'men',   A:mSF[0],B:mSF[1]}
+    {t:'17:00-17:50',p:'Finał Kobiet',cls:'women',A:wSF[0],B:wSF[1]},
+    {t:'17:50-18:40',p:'Finał Mężczyzn',cls:'men',A:mSF[0],B:mSF[1]}
   ];
 
-  const render=(rows,tbodyId)=>{
-    let html='';
-    rows.forEach(r=>{
-      if(r.t==='break'){
-        html+=`<tr class="break"><td colspan="6">${r.p}</td></tr>`;
-      }else{
-        const s=findScore(r.A,r.B);
-        html+=`<tr class="phase"><td>${r.t}</td><td colspan="4">${r.p}</td><td></td></tr>`;
-        html+=`<tr class="${r.cls}"><td></td><td></td><td>${r.A}</td><td>vs</td><td>${r.B}</td><td class="result-cell">${s}</td></tr>`;
-      }
-    });
-    document.getElementById(tbodyId).innerHTML=html;
-  };
+  const makeRows=(rows)=>
+    rows.map(r=>r.t==='break'
+       ?`<tr class="break"><td colspan="6">${r.p}</td></tr>`
+       :`<tr class="phase"><td>${r.t}</td><td colspan="4">${r.p}</td><td></td></tr>
+          <tr class="${r.cls}"><td></td><td></td><td>${r.A}</td><td>vs</td><td>${r.B}</td>
+          <td>${findScore(r.A,r.B)}</td></tr>`).join('');
 
-  render(rowsA,'court-A-body');
-  render(rowsB,'court-B-body');
-  render(finals,'finals-body');
+  document.getElementById('court-A-body').innerHTML=makeRows(rowsA);
+  document.getElementById('court-B-body').innerHTML=makeRows(rowsB);
+  document.getElementById('finals-body').innerHTML =makeRows(finals);
 }
 
-// --------- 5. Init / odśwież ---------
+// -------------------------------------------------------------------------
 async function init(){
   ['court-A-body','court-B-body','finals-body'].forEach(id=>{
     document.getElementById(id).innerHTML='<tr><td colspan="6">Ładowanie…</td></tr>';
   });
   await fetchResults();
-  const stats=computeStats();
-  populate(stats);
+  populate(computeStats());
   setTimeout(init,REFRESH_MS);
 }
 document.getElementById('refresh').addEventListener('click',init);
