@@ -13,9 +13,13 @@
     table { width: 100%; border-collapse: collapse; }
     th, td { border: 1px solid #ccc; padding: 6px; text-align: center; }
     th { background: #ddd; }
+    /* faza (nagłówki) */
     tr.phase td { background: #eee; font-weight: bold; }
+    /* wiersze "kobiece" */
     tr.women td { background: rgba(255,182,193,0.3); }
+    /* wiersze "męskie" */
     tr.men td   { background: rgba(173,216,230,0.3); }
+    /* przerwa techniczna */
     tr.break td { background: #f0f0f0; font-weight: bold; }
     .finals { margin-top: 10px; }
     .finals table { width: 100%; }
@@ -34,12 +38,7 @@
       <table>
         <thead>
           <tr>
-            <th>Godz.</th>
-            <th>Faza</th>
-            <th>Zespół A</th>
-            <th></th>
-            <th>Zespół B</th>
-            <th>Wynik</th>
+            <th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th>
           </tr>
         </thead>
         <tbody id="court-A-body">
@@ -54,12 +53,7 @@
       <table>
         <thead>
           <tr>
-            <th>Godz.</th>
-            <th>Faza</th>
-            <th>Zespół A</th>
-            <th></th>
-            <th>Zespół B</th>
-            <th>Wynik</th>
+            <th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th>
           </tr>
         </thead>
         <tbody id="court-B-body">
@@ -69,17 +63,12 @@
     </div>
   </div>
 
-  <!-- Sekcja Finałów -->
+  <!-- Finały sekcja -->
   <div class="finals">
     <table>
       <thead>
         <tr>
-          <th>Godz.</th>
-          <th>Faza</th>
-          <th>Zespół A</th>
-          <th></th>
-          <th>Zespół B</th>
-          <th>Wynik</th>
+          <th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th>
         </tr>
       </thead>
       <tbody id="finals-body">
@@ -88,380 +77,454 @@
     </table>
   </div>
 
-  <script>
-    // —— Ustawienia —— 
-    const REFRESH_MS = 180000; // 3 minuty
-    const CSV_URL =
-      'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg'
-      + '/pub?gid=1242680440&single=true&output=csv';
+<script>
+  // co ile ms automatycznie odświeżać aplikację:
+  const REFRESH_MS = 180000; // = 3 minuty
 
-    // Te same drużyny jak w fazie grupowej
-    const TEAMS = {
-      'Mężczyźni': {
-        A: ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
-        B: ['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
-      },
-      'Kobiety': {
-        A: ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
-        B: ['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
-      }
-    };
+  // Adres publikowany jako CSV: musi zawierać kolumny E i K dla fazy pucharowej
+  const CSV_URL =
+    'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg'
+    + '/pub?gid=1242680440&single=true&output=csv';
 
-    // Globalna tablica wszystkich wyników (grupa + puchary)
-    let allResults = [];
-
-    /**
-     * Pobierz CSV → zwróć tablicę obiektów:
-     *   [{ teamA: "...", teamB: "...", raw: "X:Y" }, …]
-     * tylko dla tych wierszy, gdzie kolumna E lub kolumna K ma format "liczba:liczba".
-     */
-    async function fetchResults() {
-      const response = await fetch(CSV_URL);
-      const text = await response.text();
-      const lines = text.trim().split(/\r?\n/);
-      const arr = [];
-
-      lines.forEach((line, idx) => {
-        if (idx === 0) return; // pomiń nagłówek CSV
-
-        // Rozbij na kolumny (separator może być przecinek lub średnik)
-        const cols = line.split(/,|;/).map(cell => cell.replace(/^"|"$/g, '').trim());
-
-        // Boisko A: (kolumny: 1,3,4)
-        const tA   = cols[1];
-        const tB   = cols[3];
-        const rawA = cols[4];
-
-        // Boisko B: (kolumny: 7,9,10)
-        const tC   = cols[7];
-        const tD   = cols[9];
-        const rawB = cols[10];
-
-        // Jeżeli rawA ma format np. "24:26", dodaj mecz boisko A
-        if (/^\d+:\d+$/.test(rawA) && tA && tB) {
-          arr.push({ teamA: tA, teamB: tB, raw: rawA });
-        }
-
-        // Jeżeli rawB ma format np. "33:23", dodaj mecz boisko B
-        if (/^\d+:\d+$/.test(rawB) && tC && tD) {
-          arr.push({ teamA: tC, teamB: tD, raw: rawB });
-        }
-      });
-
-      allResults = arr;
-      console.log('🍀 allResults:', allResults);
-      return arr;
+  // Definicja drużyn w grupach (ta sama jak w aplikacji fazy grupowej)
+  const TEAMS = {
+    'Mężczyźni': {
+      A: ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
+      B: ['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
+    },
+    'Kobiety': {
+      A: ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
+      B: ['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
     }
+  };
 
-    /**
-     * Zainicjuj strukturę do liczenia statystyk fazy grupowej.
-     * Zwraca:
-     *   { 
-     *     "Mężczyźni": { A: [ {name,pts:0,diff:0}, … ], B: […] },
-     *     "Kobiety":    { A: [ … ], B: […] }
-     *   }
-     */
-    function initStats() {
-      const stats = {};
+  // Tutaj przechowujemy WSZYSTKIE wyniki (zarówno grupowe, jak i pucharowe)
+  let allResults = [];
+
+  /**
+   * 1) Pobiera CSV → 2) dzieli linie po \n → 3) parsuje każdą linię
+   * 4) Dokładnie z kolumn E (indeks 4) i K (indeks 10) wyciąga "X:Y".
+   *     - Jeśli w tej kolumnie jest dokładnie "liczba:liczba" → dodaje do allResults.
+   * 5) Zwraca tablicę obiektów: { teamA:"nazwaA", teamB:"nazwaB", raw:"X:Y" }.
+   */
+  async function fetchResults() {
+    const response = await fetch(CSV_URL);
+    const text = await response.text();
+    const lines = text.trim().split(/\r?\n/);
+
+    const arr = [];
+    lines.forEach((line, idx) => {
+      if (idx === 0) return; // pomijamy nagłówek CSV
+      // Rozbijamy po przecinku lub średniku, usuwamy ewentualne cudzysłowy i białe znaki
+      const cols = line.split(/,|;/).map(cell => cell.replace(/^"|"$/g,'').trim());
+
+      // --- Boisko A ---
+      const tA   = cols[1];    // nazwa drużyny A na boisku A
+      const tB   = cols[3];    // nazwa drużyny B na boisku A
+      const rawA = cols[4];    // wynik w kolumnie E (boisko A)
+
+      // --- Boisko B ---
+      const tC   = cols[7];    // nazwa drużyny A na boisku B
+      const tD   = cols[9];    // nazwa drużyny B na boisku B
+      const rawB = cols[10];   // wynik w kolumnie K (boisko B)
+
+      // Jeżeli rawA to dokładnie "cyfra:cyfra", dodajemy wpis {teamA, teamB, raw:rawA}
+      if (/^\d+:\d+$/.test(rawA) && tA && tB) {
+        arr.push({ teamA: tA, teamB: tB, raw: rawA });
+      }
+      // Jeżeli rawB to dokładnie "cyfra:cyfra", to dodajemy dla boiska B
+      if (/^\d+:\d+$/.test(rawB) && tC && tD) {
+        arr.push({ teamA: tC, teamB: tD, raw: rawB });
+      }
+    });
+
+    allResults = arr;
+    return arr;
+  }
+
+  /**
+   * Tworzy strukturę potrzebną do liczenia statystyk fazy grupowej.
+   * Nie bierzemy tu pod uwagę meczów pucharowych — one służą tylko do wytypowania półfinalistów.
+   * Format zwracanej struktury:
+   *   {
+   *     "Mężczyźni": {
+   *       "A": [ {name:"Gdańsk Bukowski Serwis",pts:0,diff:0}, {...}, ... ],
+   *       "B": [ {...}, ... ]
+   *     },
+   *     "Kobiety": { "A":[...], "B":[...] }
+   *   }
+   */
+  function initStats() {
+    const stats = {};
+    for (const cat in TEAMS) {
+      stats[cat] = {};
+      for (const grp in TEAMS[cat]) {
+        stats[cat][grp] = TEAMS[cat][grp].map(name => ({
+          name, pts: 0, diff: 0
+        }));
+      }
+    }
+    return stats;
+  }
+
+  /**
+   * Przechodzi po WSZYSTKICH wynikach w allResults (grupy + playoffs),
+   * ale aktualizuje tylko te mecze, które występują w fazie grupowej.
+   * Za zwycięstwo w grupie (np. "33:23") przyznajemy:
+   *   jeśli a>b → 2 punkty dla A, 1 punkt dla B
+   *   jeśli b>a → 2 punkty dla B, 1 punkt dla A
+   * i aktualizujemy też różnicę punktową (diff = for − against).
+   */
+  function computeStats(results) {
+    const stats = initStats();
+    results.forEach(r => {
       for (const cat in TEAMS) {
-        stats[cat] = {};
         for (const grp in TEAMS[cat]) {
-          stats[cat][grp] = TEAMS[cat][grp].map(name => ({ name, pts: 0, diff: 0 }));
-        }
-      }
-      return stats;
-    }
-
-    /**
-     * Oblicza punkty i różnicę tylko dla meczów grupowych:
-     *  - 2 pkt za wygraną, 1 pkt za przegraną
-     *  - diff = suma( for − against )
-     */
-    function computeStats(results) {
-      const stats = initStats();
-
-      results.forEach(r => {
-        for (const cat in TEAMS) {
-          for (const grp in TEAMS[cat]) {
-            const teamList = TEAMS[cat][grp];
-            if ( teamList.includes(r.teamA) && teamList.includes(r.teamB) ) {
-              const [a, b] = r.raw.split(':').map(Number);
-              const A = stats[cat][grp].find(x => x.name === r.teamA);
-              const B = stats[cat][grp].find(x => x.name === r.teamB);
-              if (A && B) {
-                A.pts += (a > b ? 2 : 1);
-                B.pts += (b > a ? 2 : 1);
-                A.diff += (a - b);
-                B.diff += (b - a);
+          const teamList = TEAMS[cat][grp];
+          if (teamList.includes(r.teamA) && teamList.includes(r.teamB)) {
+            const [a, b] = r.raw.split(':').map(Number);
+            const A = stats[cat][grp].find(x => x.name === r.teamA);
+            const B = stats[cat][grp].find(x => x.name === r.teamB);
+            if (A && B) {
+              // przydziel punkty
+              if (a > b) {
+                A.pts += 2;
+                B.pts += 1;
+              } else {
+                B.pts += 2;
+                A.pts += 1;
               }
+              // przydziel różnicę
+              A.diff += (a - b);
+              B.diff += (b - a);
             }
           }
         }
-      });
+      }
+    });
+    return stats;
+  }
 
-      return stats;
-    }
+  /**
+   * Sortowanie zespołów w grupie wg:
+   *   1) punktów (malejąco),
+   *   2) różnicy punktowej (malejąco),
+   *   3) alfabetycznie po nazwie.
+   */
+  function sortTeams(arr) {
+    return arr.sort((a, b) => {
+      if (b.pts !== a.pts) return b.pts - a.pts;
+      if (b.diff !== a.diff) return b.diff - a.diff;
+      return a.name.localeCompare(b.name);
+    });
+  }
 
-    /** 
-     * Sortuje tablicę obiektów {name,pts,diff} wg:
-     *   1) punkty malejąco
-     *   2) diff malejąco
-     *   3) nazwa alfabetycznie
-     */
-    function sortTeams(arr) {
-      return arr.sort((a, b) => {
-        if (b.pts !== a.pts) return b.pts - a.pts;
-        if (b.diff !== a.diff) return b.diff - a.diff;
-        return a.name.localeCompare(b.name);
-      });
-    }
+  /**
+   * Funkcja pomocnicza: znajduje w allResults wynik meczu między teamX a teamY,
+   * niezależnie od kolejności (czyli jeśli w CSV jest {teamA:"1A",teamB:"2B"}, 
+   * to findScore("2B","1A") też zwróci "wynik"). Jeśli nie ma jeszcze wyniku zwróci ":".
+   */
+  function findScore(teamX, teamY) {
+    const match = allResults.find(r =>
+      (r.teamA === teamX && r.teamB === teamY) ||
+      (r.teamA === teamY && r.teamB === teamX)
+    );
+    if (!match) return ':';
+    const [x, y] = match.raw.split(':').map(Number);
+    return (match.teamA === teamX) ? `${x}:${y}` : `${y}:${x}`;
+  }
 
-    /**
-     * Szuka w tablicy allResults mecz X vs Y:
-     *   - zwraca "X:Y" w kolejności (teamX vs teamY)
-     *   - jeśli znalazł mecz w odwrotnej kolejności (teamY vs teamX), odwraca wynik za Ciebie
-     *   - jeśli meczu nie ma → zwraca ":"
-     */
-    function findScore(teamX, teamY) {
-      const match = allResults.find(r =>
-        (r.teamA === teamX && r.teamB === teamY) ||
-        (r.teamA === teamY && r.teamB === teamX)
-      );
-      if (!match) return ':';
-      const [x, y] = match.raw.split(':').map(Number);
-      return (match.teamA === teamX) ? `${x}:${y}` : `${y}:${x}`;
-    }
+  /**
+   * Na podstawie statystyk fazy grupowej (pts i diff) wybiera półfinalistów
+   * (zapisanych w postaci placeholderów "1A","2B" itd.), a później generuje wiersze
+   * tabeli ze wszystkimi fazami (Półfinały / O 7 / O 5 / O 3 / i Finały) oraz wrzuca
+   * do <tbody> odpowiedni HTML.
+   *
+   * Ważne: do wyświetlania wyniku zawsze używamy placeholderów ("1A", "2B") przy findScore,
+   * bo CSV pucharowe przechowuje właśnie mecze opisane placeholderami, a nie faktycznymi nazwami.
+   */
+  function populateCourts(stats) {
+    // 👉 1) Sortujemy zespoły w każdej grupie:
+    const wA_sorted = sortTeams([...stats['Kobiety']['A']]);
+    const wB_sorted = sortTeams([...stats['Kobiety']['B']]);
+    const mA_sorted = sortTeams([...stats['Mężczyźni']['A']]);
+    const mB_sorted = sortTeams([...stats['Mężczyźni']['B']]);
 
-    /**
-     * Bazując na posortowanych statystykach grupowych, wytypuj półfinały:
-     *   - dla Kobiet: 1A vs 2B oraz 1B vs 2A
-     *   - dla Mężczyzn: 1A vs 2B oraz 1B vs 2A
-     * Jeśli brak jeszcze punktów (tzn team.pts === 0), używamy placeholderów "1A","2B"…
-     * Zwróć tablice wierszy, które następnie wypełnimy wynikami.
-     */
-    function populateCourts(stats) {
-      // --- Posortuj zespoły w każdej grupie ---
-      const wA = sortTeams([...stats['Kobiety']['A']]);
-      const wB = sortTeams([...stats['Kobiety']['B']]);
-      const mA = sortTeams([...stats['Mężczyźni']['A']]);
-      const mB = sortTeams([...stats['Mężczyźni']['B']]);
+    // 👉 2) Wyciągamy z sortowania: faktyczne nazwy (gdzie mamy już rozegrane mecze)
+    //    albo placeholder (gdy dane nie są jeszcze w allResults).
+    //    Przykład: jeśli w grupie Kobiet A mamy zwycięzcę "KOBIETY NA BOISKA Łódź",
+    //    to wSF_A będzie "KOBIETY NA BOISKA Łódź", a placeholder_pfA = "1A".
+    //    Jeśli zaś ta drużyna nie ma punktów (mecz nie rozegrany), placeholder_pfA = "1A",
+    //    natomiast name_pfA = "1A" (to jest placeholder zamiast prawdziwej nazwy).
+    //
+    // Kobiety - półfinały
+    const wSF_A_ph = '1A',               // zawsze placeholder numer 1A
+          wSF_B_ph = '2B',               // placeholder 2B
+          wSF_C_ph = '1B',               // placeholder 1B
+          wSF_D_ph = '2A';               // placeholder 2A
 
-      // --- Placeholdery do półfinałów (Kobiety) ---
-      const wPH_A = '1A', wPH_B = '2B', wPH_C = '1B', wPH_D = '2A';
-      // lub rzeczywiste nazwy, jeśli już grały i mają punkty
-      const wSF_A = (wA[0]?.pts > 0) ? wA[0].name : wPH_A;
-      const wSF_B = (wB[1]?.pts > 0) ? wB[1].name : wPH_B;
-      const wSF_C = (wB[0]?.pts > 0) ? wB[0].name : wPH_C;
-      const wSF_D = (wA[1]?.pts > 0) ? wA[1].name : wPH_D;
+    const wSF_A_name = (wA_sorted[0]?.pts > 0) ? wA_sorted[0].name : wSF_A_ph;
+    const wSF_B_name = (wB_sorted[1]?.pts > 0) ? wB_sorted[1].name : wSF_B_ph;
+    const wSF_C_name = (wB_sorted[0]?.pts > 0) ? wB_sorted[0].name : wSF_C_ph;
+    const wSF_D_name = (wA_sorted[1]?.pts > 0) ? wA_sorted[1].name : wSF_D_ph;
 
-      // --- Placeholdery do półfinałów (Mężczyźni) ---
-      const mPH_A = '1A', mPH_B = '2B', mPH_C = '1B', mPH_D = '2A';
-      const mSF_A = (mA[0]?.pts > 0) ? mA[0].name : mPH_A;
-      const mSF_B = (mB[1]?.pts > 0) ? mB[1].name : mPH_B;
-      const mSF_C = (mB[0]?.pts > 0) ? mB[0].name : mPH_C;
-      const mSF_D = (mA[1]?.pts > 0) ? mA[1].name : mPH_D;
+    // Mężczyźni - półfinały
+    const mSF_A_ph = '1A',
+          mSF_B_ph = '2B',
+          mSF_C_ph = '1B',
+          mSF_D_ph = '2A';
 
-      // --- Placeholdery do miejsc 7,5,3 ---
-      const p7_A = '4A', p7_B = '4B';
-      const p5_A = '3A', p5_B = '3B';
-      const p3_A = '1A/2B', p3_B = '1B/2A';
+    const mSF_A_name = (mA_sorted[0]?.pts > 0) ? mA_sorted[0].name : mSF_A_ph;
+    const mSF_B_name = (mB_sorted[1]?.pts > 0) ? mB_sorted[1].name : mSF_B_ph;
+    const mSF_C_name = (mB_sorted[0]?.pts > 0) ? mB_sorted[0].name : mSF_C_ph;
+    const mSF_D_name = (mA_sorted[1]?.pts > 0) ? mA_sorted[1].name : mSF_D_ph;
 
-      // --- Przygotuj obiekty reprezentujące kolejne wiersze Boisko A ---
-      const rowsA = [
-        // Półfinał Kobiet na Boisko A
-        {
-          time: '12:30-13:20',
-          phase: 'Półfinał Kobiet',
-          actualA: wSF_A, actualB: wSF_B,
-          phA: wPH_A, phB: wPH_B,
-          cls: 'women'
-        },
-        // Półfinał Mężczyzn na Boisko A
-        {
-          time: '13:20-14:10',
-          phase: 'Półfinał Mężczyzn',
-          actualA: mSF_A, actualB: mSF_B,
-          phA: mPH_A, phB: mPH_B,
-          cls: 'men'
-        },
-        // O 7 miejsce (placeholdery 4A vs 4B)
-        {
-          time: '14:10-15:00',
-          phase: 'O 7 miejsce',
-          actualA: p7_A, actualB: p7_B,
-          phA: p7_A, phB: p7_B,
-          cls: 'women'
-        },
-        // O 5 miejsce (placeholdery 3A vs 3B)
-        {
-          time: '15:00-15:50',
-          phase: 'O 5 miejsce',
-          actualA: p5_A, actualB: p5_B,
-          phA: p5_A, phB: p5_B,
-          cls: 'men'
-        },
-        // O 3 miejsce (placeholdery 1A/2B vs 1B/2A)
-        {
-          time: '15:50-16:40',
-          phase: 'O 3 miejsce',
-          actualA: p3_A, actualB: p3_B,
-          phA: p3_A, phB: p3_B,
-          cls: 'women'
-        },
-        // Przerwa techniczna
-        { time: 'break', phase: 'PRZERWA TECHNICZNA' }
-      ];
+    // --------– PLACEHOLDERY do pozostałych faz (jeszcze brak wyników) --------
+    const p7_A_ph = '4A',    p7_B_ph = '4B';
+    const p5_A_ph = '3A',    p5_B_ph = '3B';
+    const p3_A_ph = '1A/2B', p3_B_ph = '1B/2A';
 
-      // --- Przygotuj obiekty reprezentujące kolejne wiersze Boisko B ---
-      const rowsB = [
-        // Półfinał Kobiet na Boisko B
-        {
-          time: '12:30-13:20',
-          phase: 'Półfinał Kobiet',
-          actualA: wSF_C, actualB: wSF_D,
-          phA: wPH_C, phB: wPH_D,
-          cls: 'women'
-        },
-        // Półfinał Mężczyzn na Boisko B
-        {
-          time: '13:20-14:10',
-          phase: 'Półfinał Mężczyzn',
-          actualA: mSF_C, actualB: mSF_D,
-          phA: mPH_C, phB: mPH_D,
-          cls: 'men'
-        },
-        // O 5 miejsce (placeholder zwykle 3A vs 3B, ale już wypełnione)
-        {
-          time: '14:10-15:00',
-          phase: 'O 5 miejsce',
-          actualA: p5_A, actualB: p5_B,
-          phA: p5_A, phB: p5_B,
-          cls: 'women'
-        },
-        // O 3 miejsce (placeholdery 1A/2B vs 1B/2A)
-        {
-          time: '15:00-15:50',
-          phase: 'O 3 miejsce',
-          actualA: p3_A, actualB: p3_B,
-          phA: p3_A, phB: p3_B,
-          cls: 'men'
-        },
-        // Przerwa techniczna
-        { time: 'break', phase: 'PRZERWA TECHNICZNA' }
-      ];
+    // -------- Boisko A: budujemy tablicę wierszy (każdy element to obiekt z danymi) --------
+    const rowsA = [
+      // półfinał kobiet
+      {
+        time:  '12:30-13:20',
+        phase: 'Półfinał Kobiet',
+        phA:   wSF_A_ph,      // placeholder "1A"
+        phB:   wSF_B_ph,      // placeholder "2B"
+        nameA: wSF_A_name,    // faktyczna nazwa lub "1A"
+        nameB: wSF_B_name,    // faktyczna nazwa lub "2B"
+        cls:   'women'
+      },
+      // półfinał mężczyzn
+      {
+        time:  '13:20-14:10',
+        phase: 'Półfinał Mężczyzn',
+        phA:   mSF_A_ph,
+        phB:   mSF_B_ph,
+        nameA: mSF_A_name,
+        nameB: mSF_B_name,
+        cls:   'men'
+      },
+      // mecz o 7. miejsce (jeszcze placeholdery)
+      {
+        time:  '14:10-15:00',
+        phase: 'O 7 miejsce',
+        phA:   p7_A_ph,
+        phB:   p7_B_ph,
+        nameA: p7_A_ph,
+        nameB: p7_B_ph,
+        cls:   'women'
+      },
+      // mecz o 5. miejsce
+      {
+        time:  '15:00-15:50',
+        phase: 'O 5 miejsce',
+        phA:   p5_A_ph,
+        phB:   p5_B_ph,
+        nameA: p5_A_ph,
+        nameB: p5_B_ph,
+        cls:   'men'
+      },
+      // mecz o 3. miejsce
+      {
+        time:  '15:50-16:40',
+        phase: 'O 3 miejsce',
+        phA:   p3_A_ph,
+        phB:   p3_B_ph,
+        nameA: p3_A_ph,
+        nameB: p3_B_ph,
+        cls:   'women'
+      },
+      // przerwa techniczna (tu nie ma kolumn z drużynami)
+      {
+        time:  'break',
+        phase: 'PRZERWA TECHNICZNA'
+      }
+    ];
 
-      // --- Przygotuj wiersze Finałów ---
-      const finalRows = [
-        {
-          time: '17:00-17:50',
-          phase: 'Finał Kobiet',
-          actualA: wSF_A, actualB: wSF_B,
-          phA: wPH_A, phB: wPH_B,
-          cls: 'women'
-        },
-        {
-          time: '17:50-18:40',
-          phase: 'Finał Mężczyzn',
-          actualA: mSF_A, actualB: mSF_B,
-          phA: mPH_A, phB: mPH_B,
-          cls: 'men'
-        }
-      ];
+    // -------- Boisko B: analogicznie --------
+    const rowsB = [
+      // półfinał kobiet (drugi półfinał)
+      {
+        time:  '12:30-13:20',
+        phase: 'Półfinał Kobiet',
+        phA:   wSF_C_ph,
+        phB:   wSF_D_ph,
+        nameA: wSF_C_name,
+        nameB: wSF_D_name,
+        cls:   'women'
+      },
+      // półfinał mężczyzn
+      {
+        time:  '13:20-14:10',
+        phase: 'Półfinał Mężczyzn',
+        phA:   mSF_C_ph,
+        phB:   mSF_D_ph,
+        nameA: mSF_C_name,
+        nameB: mSF_D_name,
+        cls:   'men'
+      },
+      // mecz o 5. miejsce (kobiety)
+      {
+        time:  '14:10-15:00',
+        phase: 'O 5 miejsce',
+        phA:   p5_A_ph,
+        phB:   p5_B_ph,
+        nameA: p5_A_ph,
+        nameB: p5_B_ph,
+        cls:   'women'
+      },
+      // mecz o 3. miejsce (mężczyźni)
+      {
+        time:  '15:00-15:50',
+        phase: 'O 3 miejsce',
+        phA:   p3_A_ph,
+        phB:   p3_B_ph,
+        nameA: p3_A_ph,
+        nameB: p3_B_ph,
+        cls:   'men'
+      },
+      // przerwa techniczna
+      {
+        time:  'break',
+        phase: 'PRZERWA TECHNICZNA'
+      }
+    ];
 
-      // —— Renderuj Boisko A —— 
-      let htmlA = '';
-      rowsA.forEach(r => {
-        if (r.time === 'break') {
-          htmlA += `<tr class="break"><td colspan="6">${r.phase}</td></tr>`;
-        } else {
-          // Najpierw spróbuj odnaleźć wynik wg faktycznych nazw drużyn
-          let score = findScore(r.actualA, r.actualB);
-          // Jeżeli mamy ":", to znaczy nie znaleziono meczu o tych faktycznych nazwach.
-          // Wtedy próbujemy dopasować placeholdery (np "1A" vs "2B").
-          if (score === ':' && r.phA && r.phB) {
-            score = findScore(r.phA, r.phB);
-          }
-          htmlA += `<tr class="phase"><td>${r.time}</td><td colspan="4">${r.phase}</td><td></td></tr>`;
-          htmlA += `
-            <tr class="${r.cls}">
-              <td></td><td></td>
-              <td>${r.actualA}</td>
-              <td>vs</td>
-              <td>${r.actualB}</td>
-              <td>${score}</td>
-            </tr>
-          `;
-        }
-      });
-      document.getElementById('court-A-body').innerHTML = htmlA;
+    // -------- Finały: (kobiety → 17:00-17:50; mężczyźni → 17:50-18:40) --------
+    const finalRows = [
+      {
+        time:  '17:00-17:50',
+        phase: 'Finał Kobiet',
+        phA:   wSF_A_ph,
+        phB:   wSF_B_ph,
+        nameA: wSF_A_name,
+        nameB: wSF_B_name,
+        cls:   'women'
+      },
+      {
+        time:  '17:50-18:40',
+        phase: 'Finał Mężczyzn',
+        phA:   mSF_A_ph,
+        phB:   mSF_B_ph,
+        nameA: mSF_A_name,
+        nameB: mSF_B_name,
+        cls:   'men'
+      }
+    ];
 
-      // —— Renderuj Boisko B —— 
-      let htmlB = '';
-      rowsB.forEach(r => {
-        if (r.time === 'break') {
-          htmlB += `<tr class="break"><td colspan="6">${r.phase}</td></tr>`;
-        } else {
-          let score = findScore(r.actualA, r.actualB);
-          if (score === ':' && r.phA && r.phB) {
-            score = findScore(r.phA, r.phB);
-          }
-          htmlB += `<tr class="phase"><td>${r.time}</td><td colspan="4">${r.phase}</td><td></td></tr>`;
-          htmlB += `
-            <tr class="${r.cls}">
-              <td></td><td></td>
-              <td>${r.actualA}</td>
-              <td>vs</td>
-              <td>${r.actualB}</td>
-              <td>${score}</td>
-            </tr>
-          `;
-        }
-      });
-      document.getElementById('court-B-body').innerHTML = htmlB;
+    // -------------------------------------------------------------------------
+    //  Teraz wypisujemy te wiersze do konkretnych <tbody> w HTML:
+    // -------------------------------------------------------------------------
 
-      // —— Renderuj finały —— 
-      let htmlF = '';
-      finalRows.forEach(r => {
-        let score = findScore(r.actualA, r.actualB);
-        if (score === ':' && r.phA && r.phB) {
-          score = findScore(r.phA, r.phB);
-        }
-        htmlF += `<tr class="phase"><td>${r.time}</td><td colspan="4">${r.phase}</td><td></td></tr>`;
-        htmlF += `
+    // --- Boisko A ---
+    let htmlA = '';
+    rowsA.forEach(r => {
+      if (r.time === 'break') {
+        htmlA += `<tr class="break"><td colspan="6">${r.phase}</td></tr>`;
+      } else {
+        // jeżeli to normalny mecz, szukamy wyniku po placeholderach
+        const score = findScore(r.phA, r.phB);
+        htmlA += `
+          <tr class="phase">
+            <td>${r.time}</td>
+            <td colspan="4">${r.phase}</td>
+            <td></td>
+          </tr>
           <tr class="${r.cls}">
             <td></td><td></td>
-            <td>${r.actualA}</td>
+            <td>${r.nameA}</td>
             <td>vs</td>
-            <td>${r.actualB}</td>
+            <td>${r.nameB}</td>
             <td>${score}</td>
           </tr>
         `;
-      });
-      document.getElementById('finals-body').innerHTML = htmlF;
-    }
+      }
+    });
+    document.getElementById('court-A-body').innerHTML = htmlA;
 
-    /**
-     * Główna funkcja:
-     * 1) Wyświetl „Ładowanie...” w każdym <tbody>
-     * 2) Pobierz meczowy CSV → allResults
-     * 3) Policz statystyki grupowe
-     * 4) Wywołaj populateCourts(stats), aby wypełnić tabelki
-     * 5) Za REFRESH_MS ponownie wywołaj init()
-     */
-    async function init() {
-      document.getElementById('court-A-body').innerHTML = '<tr><td colspan="6">Ładowanie...</td></tr>';
-      document.getElementById('court-B-body').innerHTML = '<tr><td colspan="6">Ładowanie...</td></tr>';
-      document.getElementById('finals-body').innerHTML   = '<tr><td colspan="6">Ładowanie...</td></tr>';
 
-      await fetchResults();
-      const stats = computeStats(allResults);
-      populateCourts(stats);
+    // --- Boisko B ---
+    let htmlB = '';
+    rowsB.forEach(r => {
+      if (r.time === 'break') {
+        htmlB += `<tr class="break"><td colspan="6">${r.phase}</td></tr>`;
+      } else {
+        const score = findScore(r.phA, r.phB);
+        htmlB += `
+          <tr class="phase">
+            <td>${r.time}</td>
+            <td colspan="4">${r.phase}</td>
+            <td></td>
+          </tr>
+          <tr class="${r.cls}">
+            <td></td><td></td>
+            <td>${r.nameA}</td>
+            <td>vs</td>
+            <td>${r.nameB}</td>
+            <td>${score}</td>
+          </tr>
+        `;
+      }
+    });
+    document.getElementById('court-B-body').innerHTML = htmlB;
 
-      setTimeout(init, REFRESH_MS);
-    }
 
-    document.getElementById('refresh').addEventListener('click', init);
-    init();
-  </script>
+    // --- Finały ---
+    let htmlF = '';
+    finalRows.forEach(r => {
+      const score = findScore(r.phA, r.phB);
+      htmlF += `
+        <tr class="phase">
+          <td>${r.time}</td>
+          <td colspan="4">${r.phase}</td>
+          <td></td>
+        </tr>
+        <tr class="${r.cls}">
+          <td></td><td></td>
+          <td>${r.nameA}</td>
+          <td>vs</td>
+          <td>${r.nameB}</td>
+          <td>${score}</td>
+        </tr>
+      `;
+    });
+    document.getElementById('finals-body').innerHTML = htmlF;
+  }
+
+  /**
+   * Główna funkcja:
+   *   1) zeruje placeholdery w tabelach,
+   *   2) pobiera wyniki (fetchResults),
+   *   3) liczy statystyki grupowe (computeStats),
+   *   4) generuje widok fazy pucharowej (populateCourts),
+   *   5) po REFRESH_MS ms uruchamia się ponownie (pętla autoodświeżania).
+   */
+  async function init() {
+    // 1) Wyczyść placeholdery
+    document.getElementById('court-A-body').innerHTML = '<tr><td colspan="6">Ładowanie...</td></tr>';
+    document.getElementById('court-B-body').innerHTML = '<tr><td colspan="6">Ładowanie...</td></tr>';
+    document.getElementById('finals-body').innerHTML   = '<tr><td colspan="6">Ładowanie...</td></tr>';
+
+    // 2) Pobierz CSV do allResults
+    await fetchResults();
+
+    // 3) Oblicz statystyki grupowe (na podstawie wszystkich wyników, ale uwzględniamy tylko te spośród them, które należą do grup)
+    const stats = computeStats(allResults);
+
+    // 4) Wypełnij tabele fazy pucharowej na podstawie placeholderów i statystyk
+    populateCourts(stats);
+
+    // 5) Ustaw odświeżanie co REFRESH_MS ms
+    setTimeout(init, REFRESH_MS);
+  }
+
+  // Obsługa przycisku "Odśwież"
+  document.getElementById('refresh').addEventListener('click', init);
+
+  // Pierwsze wywołanie
+  init();
+</script>
 </body>
 </html>
