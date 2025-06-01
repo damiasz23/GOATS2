@@ -1,191 +1,200 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width,initial-scale=1.0" />
-  <title>Turniej – Faza Pucharowa</title>
-  <style>
-    body{font-family:sans-serif;margin:20px;background:#fafafa}
-    button#refresh{margin-bottom:10px;padding:6px 12px;font-size:1rem}
-    h1{text-align:center}
-    .bracket-container{display:flex;justify-content:space-between;gap:20px;margin-bottom:20px}
-    .court{flex:1}
-    .court h2{text-align:center;margin-bottom:10px}
-    table{width:100%;border-collapse:collapse}
-    th,td{border:1px solid #ccc;padding:6px;text-align:center;font-size:.9rem}
-    th{background:#ddd}
-    tr.phase td{background:#eee;font-weight:700}
-    tr.women td{background:rgba(255,182,193,.30)}
-    tr.men   td{background:rgba(173,216,230,.30)}
-    tr.break td{background:#f0f0f0;font-weight:700}
-    .finals{margin-top:10px}
-    .finals th,.finals td{border:1px solid #ccc;padding:8px;text-align:center}
-    .finals th{background:#ddd}
-  </style>
-</head>
-<body>
-  <button id="refresh">Odśwież</button>
-  <h1>Faza Pucharowa</h1>
+<!DOCTYPE html><html lang="pl"><head>
+<meta charset="utf-8"/><meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+<title>Turniej – faza pucharowa</title>
+<style>
+ body{font-family:sans-serif;margin:20px;background:#fafafa}
+ button#refresh{margin-bottom:10px;padding:6px 12px;font-size:1rem}
+ h1{text-align:center}
+ .bracket-container{display:flex;gap:20px;justify-content:space-between;margin-bottom:20px}
+ .court{flex:1}
+ .court h2{text-align:center;margin-bottom:10px}
+ table{width:100%;border-collapse:collapse;font-size:.9rem}
+ th,td{border:1px solid #ccc;padding:6px;text-align:center}
+ th{background:#ddd}
+ tr.phase td{background:#eee;font-weight:700}
+ tr.women td{background:rgba(255,182,193,.30)}
+ tr.men   td{background:rgba(173,216,230,.30)}
+ tr.break td{background:#f0f0f0;font-weight:700}
+ .finals{margin-top:10px}
+ .finals th,.finals td{border:1px solid #ccc;padding:8px;text-align:center}
+ .finals th{background:#ddd}
+</style>
+</head><body>
+<button id="refresh">Odśwież</button>
+<h1>Faza Pucharowa</h1>
 
-  <div class="bracket-container">
-    <div class="court">
-      <h2>Boisko A</h2>
-      <table><thead>
-        <tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>
-      </thead><tbody id="court-A-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody></table>
-    </div>
-
-    <div class="court">
-      <h2>Boisko B</h2>
-      <table><thead>
-        <tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>
-      </thead><tbody id="court-B-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody></table>
-    </div>
+<div class="bracket-container">
+  <div class="court"><h2>Boisko A</h2>
+    <table><thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
+      <tbody id="courtA"><tr><td colspan="6">Ładowanie…</td></tr></tbody>
+    </table>
   </div>
-
-  <div class="finals">
-    <table><thead>
-      <tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr>
-    </thead><tbody id="finals-body"><tr><td colspan="6">Ładowanie…</td></tr></tbody></table>
+  <div class="court"><h2>Boisko B</h2>
+    <table><thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
+      <tbody id="courtB"><tr><td colspan="6">Ładowanie…</td></tr></tbody>
+    </table>
   </div>
+</div>
+
+<div class="finals">
+  <table><thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
+    <tbody id="finals"><tr><td colspan="6">Ładowanie…</td></tr></tbody>
+  </table>
+</div>
 
 <script>
-const REFRESH_MS = 180000;                                       // 3 min
 const CSV_URL='https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv';
+const REFRESH_MS=180000;
 
-// --- normalizacja napisu: usuń nadmiarowe spacje + trim ------------------
-const norm = s => s.replace(/\s+/g,' ').trim().toLowerCase();
+// spójna normalizacja (bez wielkich/małych, podwójnych spacji itp.)
+const norm=s=>s.replace(/\s+/g,' ').trim().toLowerCase();
 
-const TEAMS={
- 'mężczyźni':{
-   A:['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
-   B:['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
- },
- 'kobiety':{
-   A:['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
-   B:['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
- }
+// mapowanie placeholderów na prawdziwe zespoły
+const placeholders={
+  'mężczyźni':{
+    '1a':'gdańsk bukowski serwis', '2a':'kołobrzeg',
+    '3a':'rybnik team',            '4a':'poznań biały',
+    '1b':'zielona góra',           '2b':'ticino poland',
+    '3b':'sanicogoldlux',          '4b':'poznań niebieski'
+  },
+  'kobiety':{
+    '1a':'kobiety na boiska łódź',         '2a':'lejdis wrocław',
+    '3a':'basket team gdańsk',             '4a':'twarde babki toruń',
+    '1b':'chyże laski poznań',             '2b':'warszawa',
+    '3b':'rozważne i romantyczne rybnik' /* brak 4B */
+  }
 };
 
-let allResults=[];
+// odwrotne mapowanie (z prawdziwej nazwy na placeholder)
+const reversePlace={};
+for(const cat in placeholders){
+  reversePlace[cat]={};
+  for(const ph in placeholders[cat]){
+    reversePlace[cat][ placeholders[cat][ph] ] = ph;
+  }
+}
 
-// -------------------------------------------------------------------------
-// 1. Pobranie CSV i wyciągnięcie tylko wierszy z wynikiem X:Y
-// -------------------------------------------------------------------------
+let results=[];
+
+// ------------------------------------------------------------------
+// pobranie wszystkich wyników typu X:Y
+// ------------------------------------------------------------------
 async function fetchResults(){
   const txt=await (await fetch(CSV_URL)).text();
   const lines=txt.trim().split(/\r?\n/).slice(1);
-  const arr=[];
+  results=[];
   lines.forEach(l=>{
     const c=l.split(/,|;/).map(x=>x.replace(/^"|"$/g,'').trim());
-    const [ ,tA,,tB,rawA, , ,tC,,tD,rawB]=c;
-    if(/^\d+:\d+$/.test(rawA)&&tA&&tB) arr.push({teamA:tA,teamB:tB,raw:rawA});
-    if(/^\d+:\d+$/.test(rawB)&&tC&&tD) arr.push({teamA:tC,teamB:tD,raw:rawB});
+    const [ ,tA, ,tB,rawA, , ,tC, ,tD,rawB]=c;
+    if(/^\d+:\d+$/.test(rawA)) results.push({a: tA,b:tB,raw:rawA});
+    if(/^\d+:\d+$/.test(rawB)) results.push({a: tC,b:tD,raw:rawB});
   });
-  allResults=arr;
 }
 
-// -------------------------------------------------------------------------
-// 2. Liczenie tabel grupowych (na potrzeby kolejności 1A/2B itd.)
-// -------------------------------------------------------------------------
-function initStats(){
-  const s={};
-  for(const cat in TEAMS){
-    s[cat]={};
-    for(const grp in TEAMS[cat]){
-      s[cat][grp]=TEAMS[cat][grp].map(n=>({name:n,pts:0,diff:0}));
+// ------------------------------------------------------------------
+// szukanie wyniku (uwzględnia placeholdery i prawdziwe nazwy)
+// ------------------------------------------------------------------
+function score(cat,team1,team2){
+  const n1=norm(team1), n2=norm(team2);
+  const p1=reversePlace[cat][n1]||n1, p2=reversePlace[cat][n2]||n2;
+  for(let i=results.length-1;i>=0;i--){
+    const r=results[i];
+    const A=norm(r.a), B=norm(r.b);
+    if((A===n1||A===p1)&&(B===n2||B===p2)) return r.raw;
+    if((A===n2||A===p2)&&(B===n1||B===p1)){
+      const [x,y]=r.raw.split(':'); return `${y}:${x}`;
     }
   }
-  return s;
+  return ':';
 }
-function computeStats(){
-  const st=initStats();
-  allResults.forEach(r=>{
-    for(const cat in TEAMS)for(const grp in TEAMS[cat]){
-      const list=TEAMS[cat][grp];
-      if(list.some(x=>norm(x)===norm(r.teamA)) && list.some(x=>norm(x)===norm(r.teamB))){
-        const [a,b]=r.raw.split(':').map(Number);
-        const A=st[cat][grp].find(x=>norm(x.name)===norm(r.teamA));
-        const B=st[cat][grp].find(x=>norm(x.name)===norm(r.teamB));
-        A.pts+=a>b?2:1; B.pts+=b>a?2:1; A.diff+=a-b; B.diff+=b-a;
-      }
+
+// ------------------------------------------------------------------
+// statystyka fazy grupowej  (punkty + różnica) – tylko po to,
+// aby znać kolejność 1A/2B itd.
+// ------------------------------------------------------------------
+function groupStats(cat){
+  const pts={}, diff={};
+  for(const ph in placeholders[cat]){
+    pts[ph]=0; diff[ph]=0;
+  }
+  results.forEach(r=>{
+    const A=reversePlace[cat][norm(r.a)], B=reversePlace[cat][norm(r.b)];
+    if(A&&B){
+      const [x,y]=r.raw.split(':').map(Number);
+      pts[A]+=x>y?2:1; pts[B]+=y>x?2:1;
+      diff[A]+=x-y; diff[B]+=y-x;
     }
   });
-  return st;
-}
-const sortTeams=a=>a.sort((x,y)=>y.pts-x.pts||y.diff-x.diff||x.name.localeCompare(y.name));
-
-// -------------------------------------------------------------------------
-// 3. Znajdź najświeższy wynik dla pary (a,b)
-// -------------------------------------------------------------------------
-function findScore(a,b){
-  const A=norm(a), B=norm(b);
-  for(let i=allResults.length-1;i>=0;i--){
-    const r=allResults[i];
-    if(norm(r.teamA)===A&&norm(r.teamB)===B) return r.raw;
-    if(norm(r.teamA)===B&&norm(r.teamB)===A){
-      const [x,y]=r.raw.split(':');               // odwracamy kolejność
-      return `${y}:${x}`;
-    }
-  }
-  return ':';                                     // brak
+  const arr=Object.keys(placeholders[cat]).map(ph=>({ph,pts:pts[ph],diff:diff[ph]}));
+  arr.sort((u,v)=>v.pts-u.pts||v.diff-u.diff||u.ph.localeCompare(v.ph));
+  return arr;
 }
 
-// -------------------------------------------------------------------------
-// 4. Budowanie tabel
-// -------------------------------------------------------------------------
-function populate(stats){
-  const wA=sortTeams([...stats.kobiety.A]);
-  const wB=sortTeams([...stats.kobiety.B]);
-  const mA=sortTeams([...stats.mężczyźni.A]);
-  const mB=sortTeams([...stats.mężczyźni.B]);
+// ------------------------------------------------------------------
+function build(){
+  // kolejność w grupach
+  const menA=groupStats('mężczyźni').filter(x=>/a$/.test(x.ph));
+  const menB=groupStats('mężczyźni').filter(x=>/b$/.test(x.ph));
+  const womA=groupStats('kobiety').filter(x=>/a$/.test(x.ph));
+  const womB=groupStats('kobiety').filter(x=>/b$/.test(x.ph));
 
-  const wSF=[ wA[0]?.name||'1A', wB[1]?.name||'2B', wB[0]?.name||'1B', wA[1]?.name||'2A' ];
-  const mSF=[ mA[0]?.name||'1A', mB[1]?.name||'2B', mB[0]?.name||'1B', mA[1]?.name||'2A' ];
+  // funkcja do pobrania nazwy (placeholder lub real, zależnie czy ma punkty)
+  const name=(cat,posArr,i)=> posArr[i] && posArr[i].pts>0
+        ? placeholders[cat][posArr[i].ph] : posArr[i]?.ph.toUpperCase();
 
+  const wSF=[ name('kobiety',womA,0), name('kobiety',womB,1),
+              name('kobiety',womB,0), name('kobiety',womA,1) ];
+  const mSF=[ name('mężczyźni',menA,0), name('mężczyźni',menB,1),
+              name('mężczyźni',menB,0), name('mężczyźni',menA,1) ];
+
+  // kto gra o 7/5/3 miejsce
+  const men7=[ name('mężczyźni',menA,3), name('mężczyźni',menB,3) ];
+  const men5=[ name('mężczyźni',menA,2), name('mężczyźni',menB,2) ];
+
+  //-- półfinały ------------------------------------------------------
   const rowsA=[
-    {t:'12:30-13:20',p:'Półfinał Kobiet',cls:'women',A:wSF[0],B:wSF[1]},
-    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',A:mSF[0],B:mSF[1]},
-    {t:'14:10-15:00',p:'O 7 miejsce',cls:'men',A:mA[3]?.name||'4A',B:mB[3]?.name||'4B'},
-    {t:'15:00-15:50',p:'O 5 miejsce',cls:'men',A:mA[2]?.name||'3A',B:mB[2]?.name||'3B'},
-    {t:'15:50-16:40',p:'O 3 miejsce',cls:'women',A:'1A/2B',B:'1B/2A'},
+    {t:'12:30-13:20',p:'Półfinał Kobiet',cls:'women',A:wSF[0],B:wSF[1],cat:'kobiety'},
+    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',A:mSF[0],B:mSF[1],cat:'mężczyźni'},
+    {t:'14:10-15:00',p:'O 7 miejsce',cls:'men',A:men7[0],B:men7[1],cat:'mężczyźni'},
+    {t:'15:00-15:50',p:'O 5 miejsce',cls:'men',A:men5[0],B:men5[1],cat:'mężczyźni'},
+    {t:'15:50-16:40',p:'O 3 miejsce',cls:'women',A:'Przegrany PF K',B:'Przegrany PF K',cat:'kobiety'},
     {t:'break',p:'PRZERWA TECHNICZNA'}
   ];
   const rowsB=[
-    {t:'12:30-13:20',p:'Półfinał Kobiet',cls:'women',A:wSF[2],B:wSF[3]},
-    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',A:mSF[2],B:mSF[3]},
-    {t:'14:10-15:00',p:'O 5 miejsce',cls:'women',A:mA[2]?.name||'3A',B:mB[2]?.name||'3B'},
-    {t:'15:00-15:50',p:'O 3 miejsce',cls:'men',A:'1A/2B',B:'1B/2A'},
+    {t:'12:30-13:20',p:'Półfinał Kobiet',cls:'women',A:wSF[2],B:wSF[3],cat:'kobiety'},
+    {t:'13:20-14:10',p:'Półfinał Mężczyzn',cls:'men',A:mSF[2],B:mSF[3],cat:'mężczyźni'},
+    {t:'14:10-15:00',p:'O 5 miejsce',cls:'women',A:men5[0],B:men5[1],cat:'kobiety'},
+    {t:'15:00-15:50',p:'O 3 miejsce',cls:'men',A:'Przegrany PF M',B:'Przegrany PF M',cat:'mężczyźni'},
     {t:'break',p:'PRZERWA TECHNICZNA'}
   ];
+
   const finals=[
-    {t:'17:00-17:50',p:'Finał Kobiet',cls:'women',A:wSF[0],B:wSF[1]},
-    {t:'17:50-18:40',p:'Finał Mężczyzn',cls:'men',A:mSF[0],B:mSF[1]}
+    {t:'17:00-17:50',p:'Finał Kobiet',cls:'women',A:'Zwycięzca PF K',B:'Zwycięzca PF K',cat:'kobiety'},
+    {t:'17:50-18:40',p:'Finał Mężczyzn',cls:'men',A:'Zwycięzca PF M',B:'Zwycięzca PF M',cat:'mężczyźni'}
   ];
 
-  const makeRows=(rows)=>
-    rows.map(r=>r.t==='break'
-       ?`<tr class="break"><td colspan="6">${r.p}</td></tr>`
-       :`<tr class="phase"><td>${r.t}</td><td colspan="4">${r.p}</td><td></td></tr>
-          <tr class="${r.cls}"><td></td><td></td><td>${r.A}</td><td>vs</td><td>${r.B}</td>
-          <td>${findScore(r.A,r.B)}</td></tr>`).join('');
+  const make=r=>r.t==='break'
+    ?`<tr class="break"><td colspan="6">${r.p}</td></tr>`
+    :`<tr class="phase"><td>${r.t}</td><td colspan="4">${r.p}</td><td></td></tr>
+       <tr class="${r.cls}"><td></td><td></td>
+         <td>${r.A}</td><td>vs</td><td>${r.B}</td>
+         <td>${score(r.cat,r.A,r.B)}</td></tr>`;
 
-  document.getElementById('court-A-body').innerHTML=makeRows(rowsA);
-  document.getElementById('court-B-body').innerHTML=makeRows(rowsB);
-  document.getElementById('finals-body').innerHTML =makeRows(finals);
+  document.getElementById('courtA').innerHTML=rowsA.map(make).join('');
+  document.getElementById('courtB').innerHTML=rowsB.map(make).join('');
+  document.getElementById('finals').innerHTML =finals.map(make).join('');
 }
 
-// -------------------------------------------------------------------------
+// ------------------------------------------------------------------
 async function init(){
-  ['court-A-body','court-B-body','finals-body'].forEach(id=>{
+  ['courtA','courtB','finals'].forEach(id=>{
     document.getElementById(id).innerHTML='<tr><td colspan="6">Ładowanie…</td></tr>';
   });
   await fetchResults();
-  populate(computeStats());
+  build();
   setTimeout(init,REFRESH_MS);
 }
 document.getElementById('refresh').addEventListener('click',init);
 init();
 </script>
-</body>
-</html>
+</body></html>
