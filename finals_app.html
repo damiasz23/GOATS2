@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GOATS2 - Final</title>
   <!-- React z CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -25,9 +25,7 @@
           const response = await fetch(GOOGLE_SHEET_CSV_URL);
           const text = await response.text();
           const parsed = Papa.parse(text).data;
-          const filtered = parsed
-            .slice(40, 59) // Wiersze 41-59
-            .map((row) => row.slice(0, 11)); // Kolumny A-K
+          const filtered = parsed.slice(40, 59).map(row => row.slice(0, 11));
           setData(filtered);
         } catch (error) {
           console.error("Error fetching data:", error);
@@ -40,17 +38,14 @@
         return () => clearInterval(interval);
       }, []);
 
-      const getRowBackgroundColor = (row) => {
-        const rowText = row.join(" ").toLowerCase();
-        if (rowText.includes("półfinał") || rowText.includes("przerwa") || rowText.includes("finał")) {
-          return "#E5E5E5"; // Szary nagłówek / przerwa
-        }
-        if (rowText.includes("kobiet")) {
-          return "#FDE2E2"; // Różowy - Kobiety
-        }
-        if (rowText.includes("mężczyzn")) {
-          return "#DCE9F9"; // Niebieski - Mężczyźni
-        }
+      const getCellColor = (rowIndex) => {
+        const pinkRows = [1, 5, 7, 14]; // B42:D42 (1), B46:D46 (5), B48:D48 (7), B55:D55 (14)
+        const blueRows = [3, 4, 5, 6, 15]; // B44:D44 (3), B45:D45 (4), B46:D46 (5), B47:D47 (6), B56:D56 (15)
+        const grayRows = [0, 2, 8, 13, 16]; // B41:D41 (0), B43:D43 (2), B49:D49 (8), B54:D54 (13), B57:D57 (16)
+
+        if (pinkRows.includes(rowIndex)) return "#FDE2E2"; // Różowy
+        if (blueRows.includes(rowIndex)) return "#DCE9F9"; // Niebieski
+        if (grayRows.includes(rowIndex)) return "#E5E5E5"; // Szary
         return "white";
       };
 
@@ -72,12 +67,15 @@
             data.map((row, rowIndex) =>
               React.createElement(
                 "tr",
-                { key: rowIndex, style: { backgroundColor: getRowBackgroundColor(row) } },
+                { key: rowIndex },
                 row.map((cell, colIndex) =>
                   React.createElement(
                     "td",
                     {
                       key: colIndex,
+                      style: {
+                        backgroundColor: getCellColor(rowIndex),
+                      },
                     },
                     cell
                   )
