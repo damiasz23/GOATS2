@@ -2,7 +2,7 @@
 <html lang="pl">
 <head>
   <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
   <title>GOATS2 - Final</title>
   <!-- React z CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
@@ -15,7 +15,7 @@
     const { useState, useEffect } = React;
 
     const GOOGLE_SHEET_CSV_URL =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcWep-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv";
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv";
 
     function App() {
       const [data, setData] = useState([]);
@@ -40,15 +40,15 @@
         return () => clearInterval(interval);
       }, []);
 
-      const getBackgroundColor = (cell) => {
-        const text = (cell || "").toLowerCase();
-        if (text.includes("półfinał") || text.includes("przerwa") || text.includes("finał")) {
+      const getRowBackgroundColor = (row) => {
+        const rowText = row.join(" ").toLowerCase();
+        if (rowText.includes("półfinał") || rowText.includes("przerwa") || rowText.includes("finał")) {
           return "#E5E5E5"; // Szary nagłówek / przerwa
         }
-        if (text.includes("1a") || text.includes("2b") || text.includes("kobiet") || (text.includes("vs") && text.includes("roz"))) {
+        if (rowText.includes("kobiet")) {
           return "#FDE2E2"; // Różowy - Kobiety
         }
-        if (text.includes("1b") || text.includes("2a") || text.includes("mężczyzn") || (text.includes("vs") && text.includes("toruń"))) {
+        if (rowText.includes("mężczyzn")) {
           return "#DCE9F9"; // Niebieski - Mężczyźni
         }
         return "white";
@@ -72,15 +72,12 @@
             data.map((row, rowIndex) =>
               React.createElement(
                 "tr",
-                { key: rowIndex },
+                { key: rowIndex, style: { backgroundColor: getRowBackgroundColor(row) } },
                 row.map((cell, colIndex) =>
                   React.createElement(
                     "td",
                     {
                       key: colIndex,
-                      style: {
-                        backgroundColor: getBackgroundColor(cell),
-                      },
                     },
                     cell
                   )
