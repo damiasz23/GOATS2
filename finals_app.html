@@ -1,133 +1,78 @@
-<!DOCTYPE html>
-<html lang="pl">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1.0">
-<title>Turniej – faza pucharowa</title>
-<style>
-  body{font-family:sans-serif;margin:20px;background:#fafafa}
-  button{padding:6px 12px;font-size:1rem;margin-bottom:10px}
-  h1{text-align:center}
-  .bracket{display:flex;gap:20px;justify-content:space-between;margin-bottom:20px}
-  .court{flex:1}
-  .court h2{text-align:center;margin-bottom:6px}
-  table{width:100%;border-collapse:collapse}
-  th,td{border:1px solid #ccc;padding:6px;text-align:center}
-  th{background:#ddd}
-  tr.phase td{background:#eee;font-weight:bold}
-  tr.women td{background:rgba(255,182,193,.3)}
-  tr.men   td{background:rgba(173,216,230,.3)}
-  tr.break td{background:#f0f0f0;font-weight:bold}
-  .finals{margin-top:10px}
-</style>
-</head>
-<body>
-<button id="refresh">Odśwież</button>
-<h1>Faza Pucharowa</h1>
+// Instalacja dependencies:
+// npm install react react-dom papaparse
 
-<div class="bracket">
-  <div class="court"><h2>Boisko A</h2>
-    <table><thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
-      <tbody id="A"></tbody></table>
-  </div>
-  <div class="court"><h2>Boisko B</h2>
-    <table><thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
-      <tbody id="B"></tbody></table>
-  </div>
-</div>
+import React, { useEffect, useState } from "react";
+import Papa from "papaparse";
 
-<div class="finals">
-  <table><thead><tr><th>Godz.</th><th>Faza</th><th>Zespół A</th><th></th><th>Zespół B</th><th>Wynik</th></tr></thead>
-    <tbody id="F"></tbody></table>
-</div>
+const GOOGLE_SHEET_CSV_URL =
+  "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv";
 
-<script>
-// --- konfiguracja ---------------------------------------------------------
-const CSV_URL =
-'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg'
-+ '/pub?gid=1242680440&single=true&output=csv';
+export default function App() {
+  const [data, setData] = useState([]);
 
-const REFRESH_MS = 180000;         // automatyczne odświeżanie co 3 min
-// -------------------------------------------------------------------------
+  const fetchData = async () => {
+    try {
+      const response = await fetch(GOOGLE_SHEET_CSV_URL);
+      const text = await response.text();
+      const parsed = Papa.parse(text).data;
 
-// usuwamy polskie znaki, spacje, robimy lower-case
-const norm = s => s
-  .toLowerCase()
-  .normalize('NFD').replace(/[\u0300-\u036f]/g,'') // diakrytyki
-  .replace(/\s+/g,'')
-  .trim();
+      // Filtrujemy wiersze 41-59 i kolumny A-K
+      const filtered = parsed
+        .slice(40, 59) // Wiersze 41-59 (0-indeksowane)
+        .map(row => row.slice(0, 11)); // Kolumny A-K (0-indeksowane)
 
-let results=[];      // wszystkie wyniki {a,b,raw}
+      setData(filtered);
+    } catch (error) {
+      console.error("Error fetching data:", error);
+    }
+  };
 
-// pobranie i sparsowanie CSV
-async function loadCSV(){
-  const txt = await fetch(CSV_URL).then(r=>r.text());
-  results = [];
-  txt.trim().split(/\r?\n/).slice(1).forEach(l=>{
-    const c = l.split(/,|;/).map(x=>x.replace(/^"|"$/g,'').trim());
-    const [ ,a,,b,rawA,, ,cA,,cB,rawB] = c;
-    if(/^\d+:\d+$/.test(rawA)) results.push({a,b,raw:rawA});
-    if(/^\d+:\d+$/.test(rawB)) results.push({a:cA,b:cB,raw:rawB});
-  });
+  useEffect(() => {
+    fetchData();
+    const interval = setInterval(fetchData, 3 * 60 * 1000);
+    return () => clearInterval(interval);
+  }, []);
+
+  const refreshData = () => fetchData();
+
+  return (
+    <div className="p-4">
+      <h1 className="text-2xl font-bold mb-4">Tabela z Arkusza Google</h1>
+      <button
+        onClick={refreshData}
+        className="mb-4 p-2 bg-blue-500 text-white rounded"
+      >
+        Odśwież dane
+      </button>
+      <div className="overflow-auto border">
+        <table className="border-collapse w-full">
+          <tbody>
+            {data.map((row, rowIndex) => (
+              <tr key={rowIndex}>
+                {row.map((cell, colIndex) => (
+                  <td
+                    key={colIndex}
+                    className="border p-2"
+                    style={{
+                      backgroundColor: getBackgroundColor(rowIndex, colIndex),
+                    }}
+                  >
+                    {cell}
+                  </td>
+                ))}
+              </tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </div>
+  );
+
+  function getBackgroundColor(rowIndex, colIndex) {
+    if (rowIndex === 0) return "#E0E0E0"; // Nagłówki
+    if (colIndex === 0) return "#F8F8F8"; // Pierwsza kolumna
+    if (data[rowIndex] && data[rowIndex][colIndex]?.includes("VS"))
+      return "#FDE2E2"; // Mecz
+    return "white";
+  }
 }
-
-// szukanie wyniku dla pary (zwraca "X:Y" lub ":")
-function score(t1,t2){
-  const n1=norm(t1), n2=norm(t2);
-  const m = results.find(r=>{
-    const A=norm(r.a), B=norm(r.b);
-    return (A===n1 && B===n2)||(A===n2 && B===n1);
-  });
-  if(!m) return ':';
-  const [x,y]=m.raw.split(':').map(s=>s.trim());
-  return norm(m.a)===n1? `${x}:${y}`:`${y}:${x}`;
-}
-
-// ----------------- dane do tabel (przykład real -> placeholder) -----------
-const courtsA = [
-  {time:'12:30-13:20', phase:'Półfinał Kobiet', teamA:'KOBIETY NA BOISKA Łódź', teamB:'Warszawa', cls:'women'},
-  {time:'13:20-14:10', phase:'Półfinał Mężczyzn', teamA:'Poznań Biały', teamB:'TICINO POLAND', cls:'men'},
-  {time:'14:10-15:00', phase:'O 7 miejsce', teamA:'Gdańsk Bukowski Serwis', teamB:'Poznań Niebieski', cls:'men'},
-  {time:'15:00-15:50', phase:'O 5 miejsce', teamA:'Rybnik Team', teamB:'SANICOGOLDLUX', cls:'men'},
-  {time:'15:50-16:40', phase:'O 3 miejsce', teamA:'1A/2B', teamB:'1B/2A', cls:'women'},
-  {break:true}
-];
-
-const courtsB = [
-  {time:'12:30-13:20', phase:'Półfinał Kobiet', teamA:'Rozważne i Romantyczne Rybnik', teamB:'Twarde Babki Toruń', cls:'women'},
-  {time:'13:20-14:10', phase:'Półfinał Mężczyzn', teamA:'Zielona Góra', teamB:'Kołobrzeg', cls:'men'},
-  {time:'14:10-15:00', phase:'O 5 miejsce', teamA:'Rybnik Team', teamB:'SANICOGOLDLUX', cls:'women'},
-  {time:'15:00-15:50', phase:'O 3 miejsce', teamA:'Poznań Biały', teamB:'Zielona Góra', cls:'men'},
-  {break:true}
-];
-
-const finals = [
-  {time:'17:00-17:50', phase:'Finał Kobiet', teamA:'KOBIETY NA BOISKA Łódź', teamB:'Warszawa', cls:'women'},
-  {time:'17:50-18:40', phase:'Finał Mężczyzn', teamA:'Poznań Biały', teamB:'TICINO POLAND', cls:'men'}
-];
-// -------------------------------------------------------------------------
-
-function renderRows(arr, tbody){
-  let html='';
-  arr.forEach(r=>{
-    if(r.break){ html+=`<tr class="break"><td colspan="6">PRZERWA TECHNICZNA</td></tr>`; return;}
-    const s = score(r.teamA,r.teamB);
-    html+=`<tr class="phase"><td>${r.time}</td><td colspan="4">${r.phase}</td><td></td></tr>`;
-    html+=`<tr class="${r.cls}"><td></td><td></td><td>${r.teamA}</td><td>vs</td><td>${r.teamB}</td><td>${s}</td></tr>`;
-  });
-  document.getElementById(tbody).innerHTML = html;
-}
-
-async function init(){
-  await loadCSV();
-  renderRows(courtsA,'A');
-  renderRows(courtsB,'B');
-  renderRows(finals,'F');
-}
-
-document.getElementById('refresh').onclick=init;
-init();
-setInterval(init,REFRESH_MS);
-</script>
-</body>
-</html>
