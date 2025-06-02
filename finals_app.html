@@ -15,7 +15,7 @@
     const { useState, useEffect } = React;
 
     const GOOGLE_SHEET_CSV_URL =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv";
+      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcWep-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv";
 
     function App() {
       const [data, setData] = useState([]);
@@ -39,6 +39,20 @@
         const interval = setInterval(fetchData, 3 * 60 * 1000);
         return () => clearInterval(interval);
       }, []);
+
+      const getBackgroundColor = (cell) => {
+        const text = (cell || "").toLowerCase();
+        if (text.includes("półfinał") || text.includes("przerwa") || text.includes("finał")) {
+          return "#E5E5E5"; // Szary nagłówek / przerwa
+        }
+        if (text.includes("1a") || text.includes("2b") || text.includes("kobiet") || (text.includes("vs") && text.includes("roz"))) {
+          return "#FDE2E2"; // Różowy - Kobiety
+        }
+        if (text.includes("1b") || text.includes("2a") || text.includes("mężczyzn") || (text.includes("vs") && text.includes("toruń"))) {
+          return "#DCE9F9"; // Niebieski - Mężczyźni
+        }
+        return "white";
+      };
 
       return React.createElement(
         "div",
@@ -65,14 +79,7 @@
                     {
                       key: colIndex,
                       style: {
-                        backgroundColor:
-                          rowIndex === 0
-                            ? "#E0E0E0"
-                            : colIndex === 0
-                            ? "#F8F8F8"
-                            : cell.includes("VS")
-                            ? "#FDE2E2"
-                            : "white",
+                        backgroundColor: getBackgroundColor(cell),
                       },
                     },
                     cell
