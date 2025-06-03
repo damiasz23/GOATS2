@@ -50,7 +50,7 @@
   async function fetchResults() {
     const res = await fetch(CSV_URL);
     const text = await res.text();
-    const lines = text.trim().split(/\\r?\\n/).slice(1);
+    const lines = text.trim().split(/\r?\n/).slice(1);
     return lines.flatMap(line => {
       const parts = line.split(/,|;/).map(c => c.replace(/^\"|\"$/g, '').trim());
       const [ , teamA, , teamB, rawA ] = parts;
