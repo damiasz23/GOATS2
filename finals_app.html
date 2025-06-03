@@ -53,9 +53,12 @@
       font-weight: bold;
       text-align: center;
     }
+    .spacer td {
+      background: transparent !important;
+      border: none !important;
+      height: 20px;
+    }
   </style>
-
-  <!-- React z CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script>
@@ -96,6 +99,9 @@
         return "";
       };
 
+      const isSpacer = (rowIndex) => [2, 6, 12].includes(rowIndex);
+      const isMergedRow = (rowIndex) => [0, 2, 8, 13, 16].includes(rowIndex);
+
       return React.createElement(
         "div",
         null,
@@ -111,19 +117,24 @@
           React.createElement(
             "tbody",
             null,
-            data.map((row, rowIndex) =>
-              React.createElement(
-                "tr",
-                { key: rowIndex, className: getRowClass(rowIndex) },
-                row.map((cell, colIndex) =>
-                  React.createElement(
-                    "td",
-                    { key: colIndex },
-                    cell
-                  )
-                )
-              )
-            )
+            data.map((row, rowIndex) => {
+              if (isSpacer(rowIndex)) {
+                return React.createElement("tr", { key: rowIndex, className: "spacer" },
+                  React.createElement("td", { colSpan: row.length }, "")
+                );
+              } else if (isMergedRow(rowIndex)) {
+                return React.createElement("tr", { key: rowIndex, className: getRowClass(rowIndex) },
+                  React.createElement("td", {
+                    colSpan: row.length,
+                    style: { fontWeight: 'bold', textAlign: 'center' }
+                  }, row[0])
+                );
+              } else {
+                return React.createElement("tr", { key: rowIndex, className: getRowClass(rowIndex) },
+                  row.map((cell, colIndex) => React.createElement("td", { key: colIndex }, cell))
+                );
+              }
+            })
           )
         )
       );
