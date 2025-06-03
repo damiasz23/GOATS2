@@ -393,19 +393,25 @@
     // Wypełnia komórkę idCell tekstem w formacie "X:Y", gdzie X=parsed[r1][c1], Y=parsed[r2][c2].
     // Przy naszych finałach r1=r2, więc sam wziąłem X i Y z tego samego wiersza.
     function fillResultPair(idCell, parsed, row1, col1, row2, col2) {
-      const el = document.getElementById(idCell);
-      if (!el) return;
-      const part1 = (parsed[row1] && parsed[row1][col1] !== undefined)
-                    ? parsed[row1][col1] : '';
-      const part2 = (parsed[row2] && parsed[row2][col2] !== undefined)
-                    ? parsed[row2][col2] : '';
-      // Jeśli obie części są puste, zostawiamy tylko ":", w innym wypadku „X:Y”.
-      if (part1 === '' && part2 === '') {
-        el.textContent = ':';
-      } else {
-        el.textContent = `${part1}:${part2}`;
-      }
-    }
+  const el = document.getElementById(idCell);
+  if (!el) return;
+
+  // pobieramy surowe wartości (jeśli undefined → "")
+  const raw1 = (parsed[row1] && parsed[row1][col1] !== undefined) ? parsed[row1][col1] : '';
+  const raw2 = (parsed[row2] && parsed[row2][col2] !== undefined) ? parsed[row2][col2] : '';
+
+  // traktujemy jako "puste", jeżeli są zerową długością lub zawierają sam dwukropek
+  const part1 = raw1.trim() === ':' ? '' : raw1.trim();
+  const part2 = raw2.trim() === ':' ? '' : raw2.trim();
+
+  // jeżeli obie części są puste → wypisujemy dokładnie jeden ":"
+  if (part1 === '' && part2 === '') {
+    el.textContent = ':';
+  } else {
+    // w przeciwnym wypadku łączymy „X:Y” (część, nawet jeśli jedna jest pusta)
+    el.textContent = `${part1}:${part2}`;
+  }
+}
   </script>
 </body>
 </html>
