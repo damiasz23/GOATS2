@@ -4,6 +4,57 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>GOATS2 - Final</title>
+  <style>
+    body {
+      margin: 0;
+      padding: 40px;
+      font-family: sans-serif;
+      background: url('Goats2.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+    #root {
+      background-color: rgba(255, 255, 255, 0.92);
+      padding: 30px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
+      max-width: 1200px;
+      margin: auto;
+    }
+    h1 {
+      text-align: center;
+      margin-top: 0;
+    }
+    button {
+      padding: 8px 16px;
+      font-size: 1rem;
+      margin-bottom: 20px;
+      cursor: pointer;
+      border-radius: 6px;
+      border: none;
+      background-color: #333;
+      color: white;
+    }
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      margin-bottom: 20px;
+    }
+    td {
+      padding: 10px;
+      border: 1px solid #ccc;
+      text-align: center;
+      font-size: 14px;
+      background-color: white;
+    }
+    .pink td { background-color: #FDE2E2 !important; }
+    .blue td { background-color: #DCE9F9 !important; }
+    .gray td {
+      background-color: #E5E5E5 !important;
+      font-weight: bold;
+      text-align: center;
+    }
+  </style>
+
   <!-- React z CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
@@ -38,45 +89,36 @@
         return () => clearInterval(interval);
       }, []);
 
-      const getCellColor = (rowIndex) => {
-        const pinkRows = [1, 5, 7, 14]; // B42:D42 (1), B46:D46 (5), B48:D48 (7), B55:D55 (14)
-        const blueRows = [3, 4, 5, 6, 15]; // B44:D44 (3), B45:D45 (4), B46:D46 (5), B47:D47 (6), B56:D56 (15)
-        const grayRows = [0, 2, 8, 13, 16]; // B41:D41 (0), B43:D43 (2), B49:D49 (8), B54:D54 (13), B57:D57 (16)
-
-        if (pinkRows.includes(rowIndex)) return "#FDE2E2"; // Różowy
-        if (blueRows.includes(rowIndex)) return "#DCE9F9"; // Niebieski
-        if (grayRows.includes(rowIndex)) return "#E5E5E5"; // Szary
-        return "white";
+      const getRowClass = (rowIndex) => {
+        if ([1, 5, 7, 14].includes(rowIndex)) return "pink";
+        if ([3, 4, 5, 6, 15].includes(rowIndex)) return "blue";
+        if ([0, 2, 8, 13, 16].includes(rowIndex)) return "gray";
+        return "";
       };
 
       return React.createElement(
         "div",
-        { style: { padding: "20px" } },
+        null,
         React.createElement("h1", null, "Tabela z Arkusza Google"),
         React.createElement(
           "button",
-          { onClick: fetchData, style: { marginBottom: "10px" } },
+          { onClick: fetchData },
           "Odśwież dane"
         ),
         React.createElement(
           "table",
-          { border: "1", cellPadding: "5", style: { borderCollapse: "collapse", width: "100%" } },
+          null,
           React.createElement(
             "tbody",
             null,
             data.map((row, rowIndex) =>
               React.createElement(
                 "tr",
-                { key: rowIndex },
+                { key: rowIndex, className: getRowClass(rowIndex) },
                 row.map((cell, colIndex) =>
                   React.createElement(
                     "td",
-                    {
-                      key: colIndex,
-                      style: {
-                        backgroundColor: getCellColor(rowIndex),
-                      },
-                    },
+                    { key: colIndex },
                     cell
                   )
                 )
