@@ -5,9 +5,7 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finał turnieju Goats 2</title>
 
-  <!-- React i PapaParse (u Ciebie już były) -->
-  <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
-  <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
+  <!-- PapaParse (do wczytywania CSV) -->
   <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script>
 
   <style>
@@ -53,7 +51,7 @@
     }
 
     /* ======================= */
-    /*  WKŁADANIE TABEL OBOK  */
+    /*  UKŁAD TABEL OBOK SIEBIE */
     /* ======================= */
     .tables-row {
       display: flex;
@@ -94,7 +92,7 @@
       background-color: #e5e5e5;
       font-weight: 600;
     }
-    /* Wiersz-tytuł sekcji: Półfinał Kobiet/Mężczyzn, O 7/5/3 miejsce, Finał Kobiet/ Mężczyzn */
+    /* Wiersz‐nagłówek sekcji (np. „PÓŁFINAŁ KOBIET”, „O 7 MIEJSCE” itd.) */
     .section-header {
       background-color: #d0d0d0;
       font-weight: 700;
@@ -103,14 +101,14 @@
     }
 
     /* ======================= */
-    /*  KOLORY WCINKÓW MECZOWYCH */
+    /*  KOLORY WIERSZY MECZOWYCH */
     /* ======================= */
     .pink  { background-color: #fde2e2; }
     .blue  { background-color: #dce9f9; }
     .gray  { background-color: #e5e5e5; }
 
     /* ======================= */
-    /*   TABELA „Finały”       */
+    /*    TABELA „Finały”      */
     /* ======================= */
     .final-wrapper {
       margin-top: 30px;
@@ -128,7 +126,9 @@
       text-transform: uppercase;
     }
 
-    /* Małe upiększenia responsywności */
+    /* ======================= */
+    /*    RESPONSYWNOŚĆ        */
+    /* ======================= */
     @media (max-width: 800px) {
       .table-wrapper {
         width: 100%;
@@ -161,10 +161,15 @@
   </div>
 
   <script>
-    // URL pliku CSV z arkusza Google (Twoja dotychczasowa wartość)
+    // ===================================================================
+    // 1) ADRES CSV – Twój arkusz z fazą finałową w formacie CSV
+    // ===================================================================
     const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv';
 
-    // Funkcja nadająca klasę kolorystyczną wierszowi wg indexu
+    // ===================================================================
+    // 2) getClass(rowIndex) – przydziela kolor tła wierszowi MECZOWEMU
+    //    (dokładnie tak, jak w Twoich poprzednich klasach pink/blue/gray)
+    // ===================================================================
     function getClass(rowIndex) {
       const pinkRows =  [1, 5, 7, 14];
       const blueRows =  [3, 4, 5, 6, 15];
@@ -175,183 +180,140 @@
       return '';
     }
 
-    // Pobieramy dane CSV i wyciągamy wiersze 40–58 (łącznie 19 wierszy)
+    // ===================================================================
+    // 3) fetchData() – pobiera CSV, wybiera wiersze 40..58 i wysyła do draw()
+    // ===================================================================
     async function fetchData() {
       try {
         const res = await fetch(CSV_URL);
         const text = await res.text();
-        const parsed = Papa.parse(text).data;
-        // Zakładamy, że właśnie te wiersze (40..58) to nasze „faza finałowa”
+        const parsed = Papa.parse(text.trim()).data;
+        // Zakładamy, że właśnie wiersze 40..58 (łącznie 19 wierszy) to pełna faza finałowa
         const filtered = parsed.slice(40, 59).map(row => row.slice(0, 11));
-        renderTables(filtered);
+        renderAllTables(filtered);
       } catch (err) {
-        console.error('Błąd podczas pobierania danych:', err);
+        console.error('Błąd podczas pobierania CSV:', err);
       }
     }
 
-    function renderTables(data) {
-      // 1) Podziel dane na Boisko A (kol. 0..5) i Boisko B (kol. 6..10)
-      const courtA = data.map(row => row.slice(0, 6));   // każda linia to 6 komórek
-      const courtB = data.map(row => row.slice(6, 11));  // każda linia to 5 komórek + ewentualnie pusta
+    // ===================================================================
+    // 4) renderAllTables(data) – dzieli dane na trzy fragmenty: 
+    //    • CourtA  (kolumny 0..5) 
+    //    • CourtB  (kolumny 6..10) 
+    //    • Finały  (od wiersza, w którym pojawi się „FINAŁ KOBIET”)
+    // ===================================================================
+    function renderAllTables(data) {
+      // 4.1) Oddzielamy dane na dwie części – CourtA i CourtB
+      const courtA = data.map(r => r.slice(0, 6));   // 6 kolumn: [0]=Sekcja lub godzina, [1]=drużyna A, [2]=VS, [3]=drużyna B, [4]=wynik lub ":", [5]=zwykle puste
+      const courtB = data.map(r => r.slice(6, 11));  // 5 wartości: [0]=Sekcja lub godzina, [1]=drużyna, [2]=VS, [3]=drużyna, [4]=wynik lub ":", [5] – tu nie ma, więc undefined
 
-      // 2) Funkcja do budowania tabeli turniejowej dla Boiska A/B
-      //    Sekcje: PÓŁFINAŁ KOBIET (wiersze 0..1), PÓŁFINAŁ MĘŻCZYZN (2..3), 
-      //    O 7 MIEJSCE (4), O 5 MIEJSCE (5), O 3 MIEJSCE (6).
-      function buildCourtTable(rows) {
-        let html = '';
-
-        // Sekcja: PÓŁFINAŁ KOBIET
-        html += `
-          <tr class="section-header">
-            <th colspan="${rows[0].length}">PÓŁFINAŁ KOBIET</th>
-          </tr>`;
-        for (let i = 0; i < 2; i++) {
-          const r = rows[i];
-          html += `
-            <tr class="${getClass(i)}">
-              <td>${r[0]}</td>
-              <td>${r[1]}</td>
-              <td>${r[2]}</td>
-              <td>${r[3]}</td>
-              <td>${r[4]}</td>
-              <td>${r[5] || ''}</td>
-            </tr>`;
-        }
-
-        // Sekcja: PÓŁFINAŁ MĘŻCZYZN
-        html += `
-          <tr class="section-header">
-            <th colspan="${rows[0].length}">PÓŁFINAŁ MĘŻCZYZN</th>
-          </tr>`;
-        for (let i = 2; i < 4; i++) {
-          const r = rows[i];
-          html += `
-            <tr class="${getClass(i)}">
-              <td>${r[0]}</td>
-              <td>${r[1]}</td>
-              <td>${r[2]}</td>
-              <td>${r[3]}</td>
-              <td>${r[4]}</td>
-              <td>${r[5] || ''}</td>
-            </tr>`;
-        }
-
-        // Sekcja: O 7 MIEJSCE
-        html += `
-          <tr class="section-header">
-            <th colspan="${rows[0].length}">O 7 MIEJSCE</th>
-          </tr>`;
-        {
-          const i = 4;
-          const r = rows[i];
-          html += `
-            <tr class="${getClass(i)}">
-              <td>${r[0]}</td>
-              <td>${r[1]}</td>
-              <td>${r[2]}</td>
-              <td>${r[3]}</td>
-              <td>${r[4]}</td>
-              <td>${r[5] || ''}</td>
-            </tr>`;
-        }
-
-        // Sekcja: O 5 MIEJSCE
-        html += `
-          <tr class="section-header">
-            <th colspan="${rows[0].length}">O 5 MIEJSCE</th>
-          </tr>`;
-        {
-          const i = 5;
-          const r = rows[i];
-          html += `
-            <tr class="${getClass(i)}">
-              <td>${r[0]}</td>
-              <td>${r[1]}</td>
-              <td>${r[2]}</td>
-              <td>${r[3]}</td>
-              <td>${r[4]}</td>
-              <td>${r[5] || ''}</td>
-            </tr>`;
-        }
-
-        // Sekcja: O 3 MIEJSCE
-        html += `
-          <tr class="section-header">
-            <th colspan="${rows[0].length}">O 3 MIEJSCE</th>
-          </tr>`;
-        {
-          const i = 6;
-          const r = rows[i];
-          html += `
-            <tr class="${getClass(i)}">
-              <td>${r[0]}</td>
-              <td>${r[1]}</td>
-              <td>${r[2]}</td>
-              <td>${r[3]}</td>
-              <td>${r[4]}</td>
-              <td>${r[5] || ''}</td>
-            </tr>`;
-        }
-
-        return html;
+      // 4.2) Lokalizujemy wiersz, od którego zaczyna się sekcja Finałów
+      //     Szukamy pierwszego wiersza, w którym w kolumnie A (czyli data[i][0]) jest napis „FINAŁ” (albo „Finał”).
+      let finalStartIdx = data.findIndex(r => 
+        r[0] && r[0].toString().toUpperCase().includes("FINAŁ")
+      );
+      if (finalStartIdx === -1) {
+        // Jeżeli nie znaleziono, to po prostu rysujemy CourtA i CourtB, a finały zostawiamy puste.
+        finalStartIdx = data.length;
       }
 
-      // 3) Budowanie tabeli „Finały”
-      //    Zakładamy, że w data.slice(40,59) ostatnie dwie linie (indices 17,18) to:
-      //      – wiersz 17: Finał Kobiet
-      //      – wiersz 18: Finał Mężczyzn
-      //
-      //    Po wycięciu filtered = data.slice(40,59), mamy filtered[17] i filtered[18].
-      const finalsData = data.slice(17, 19);
-      function buildFinalTable(rows) {
-        let html = '';
+      // 4.3) Oddzielamy „dane finałowe” – weź wiersze od finalStartIdx do końca
+      const finalsData = data.slice(finalStartIdx).map(r => r.slice(0, 6));
 
-        // Finał Kobiet
-        html += `
-          <tr class="section-header">
-            <th colspan="${rows[0].length}">Finał Kobiet</th>
-          </tr>`;
-        {
-          const r = rows[0];
-          html += `
-            <tr class="${getClass(17)}">
-              <td>${r[0]}</td>
-              <td>${r[1]}</td>
-              <td>${r[2]}</td>
-              <td>${r[3]}</td>
-              <td>${r[4]}</td>
-              <td>${r[5] || ''}</td>
-            </tr>`;
-        }
-
-        // Finał Mężczyzn
-        html += `
-          <tr class="section-header">
-            <th colspan="${rows[0].length}">Finał Mężczyzn</th>
-          </tr>`;
-        {
-          const r = rows[1];
-          html += `
-            <tr class="${getClass(18)}">
-              <td>${r[0]}</td>
-              <td>${r[1]}</td>
-              <td>${r[2]}</td>
-              <td>${r[3]}</td>
-              <td>${r[4]}</td>
-              <td>${r[5] || ''}</td>
-            </tr>`;
-        }
-
-        return html;
-      }
-
-      // 4) Wstawiamy wygenerowany kod HTML do odpowiednich <table>
+      // 4.4) Wypełniamy HTML-owe <table> trzema fragmentami:
       document.getElementById('courtA').innerHTML = buildCourtTable(courtA);
       document.getElementById('courtB').innerHTML = buildCourtTable(courtB);
       document.getElementById('final').innerHTML  = buildFinalTable(finalsData);
     }
 
-    // Pierwsze pobranie danych
+    // ===================================================================
+    // 5) buildCourtTable(rows) – buduje tabelę dla jednego boiska (A lub B).
+    //    rows to cała tablica wierszy (np. 19 wierszy), przekrojonych do 6 kolumn.
+    //    Dla każdego wiersza:
+    //     – jeżeli r[0] != "" i r[1] == "" → to jest nagłówek sekcji (np. "PÓŁFINAŁ KOBIET" lub "O 7 MIEJSCE" lub "PRZERWA TECHNICZNA").
+    //     – jeżeli cały r jest pusty → pomiń wiersz.
+    //     – w przeciwnym razie → wiersz meczowy: wyświetl r[0]..r[4] w `<td>`, nadając klasę kolorystyczną getClass(i).
+    // ===================================================================
+    function buildCourtTable(rows) {
+      let html = "";
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].map(cell => (cell === undefined ? "" : cell)); 
+        const allEmpty = r.every(cell => cell.toString().trim() === "");
+        if (allEmpty) {
+          // pomiń całkowicie pusty wiersz
+          continue;
+        }
+
+        const first = r[0].toString().trim();
+        const second = r[1].toString().trim();
+
+        // 5.1) Jeżeli w pierwszej komórce jest jakiś tekst, a w drugiej jest pustka → traktuj jako nagłówek sekcji
+        if (first !== "" && second === "") {
+          html += `
+            <tr class="section-header">
+              <th colspan="${r.length}">${first}</th>
+            </tr>`;
+          continue;
+        }
+
+        // 5.2) W przeciwnym razie to wiersz meczowy – wyświetl tyle komórek, ile jest w tym wierszu (zwykle 5 lub 6)
+        //      Nadajemy klasę kolorystyczną według indeksu i (getClass(i)).
+        const cssClass = getClass(i);
+        html += `<tr class="${cssClass}">`;
+        // Wyświetl od 0 do 4. kolumny jako: godzina, drużyna A, VS, drużyna B, wynik
+        // Jeśli jest szósta (r[5]) – też dodaj jako pustą komórkę, żeby wyrównać kolumny.
+        for (let col = 0; col < r.length; col++) {
+          html += `<td>${r[col] || ""}</td>`;
+        }
+        html += "</tr>";
+      }
+      return html;
+    }
+
+    // ===================================================================
+    // 6) buildFinalTable(rows) – buduje tabelę „Finały” na podstawie przekazanych wierszy.
+    //    rows to tablica podzbioru data.slice(finalStartIdx). Dla każdego wiersza:
+    //     – jeżeli r[0] nie jest pusty, a r[1] == "" → nagłówek sekcji (np. "FINAŁ KOBIET" czy "FINAŁ MĘŻCZYZN").
+    //     – jeżeli r jest pusty → pomiń wiersz.
+    //     – w przeciwnym razie → wiersz meczowy (wyświetlamy kolumny 0..4).
+    // ===================================================================
+    function buildFinalTable(rows) {
+      let html = "";
+      for (let i = 0; i < rows.length; i++) {
+        const r = rows[i].map(cell => (cell === undefined ? "" : cell));
+        const allEmpty = r.every(cell => cell.toString().trim() === "");
+        if (allEmpty) {
+          continue; // pomiń całkowicie pusty wiersz
+        }
+
+        const first = r[0].toString().trim();
+        const second = r[1].toString().trim();
+
+        // 6.1) Jeżeli nagłówek sekcji (np. "FINAŁ KOBIET"), to <tr class="section-header"><th colspan>..</th></tr>
+        if (first !== "" && second === "") {
+          html += `
+            <tr class="section-header">
+              <th colspan="6">${first}</th>
+            </tr>`;
+          continue;
+        }
+
+        // 6.2) Wiersz meczowy – nadajemy styl kolorystyczny wg indexu wiersza sumarycznie
+        const cssClass = getClass(i);
+        html += `<tr class="${cssClass}">`;
+        // Wyświetlamy tylko kolumny 0..4 (czas, drużyna A, VS, drużyna B, wynik).
+        for (let col = 0; col < 5; col++) {
+          html += `<td>${r[col] || ""}</td>`;
+        }
+        // Jeśli w CSV są dodatkowe kolumny, można je tu pominąć albo dodać <td>...
+        html += `</tr>`;
+      }
+      return html;
+    }
+
+    // ===================================================================
+    // 7) Na starcie ładujemy dane
+    // ===================================================================
     fetchData();
   </script>
 </body>
