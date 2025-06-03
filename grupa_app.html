@@ -5,13 +5,13 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GOATS 2 faza grupowa</title>
   <style>
-    body {
+      body {
       font-family: sans-serif;
       margin: 20px;
       background: url('Goats2.png') no-repeat center center fixed;
       background-size: cover;
     }
-    #app {Add commentMore actions
+    #app {
       background-color: rgba(255, 255, 255, 0.9);
       padding: 20px;
       border-radius: 12px;
@@ -23,7 +23,7 @@
     .group { margin-top: 20px; }
     .group h2 { font-size: 1.25rem; margin: 0 0 10px; }
     table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-    table.grid th, table.grid td { border: 1px solid #ccc; padding: 6px; text-align: center; background-color: #fff; }Add commentMore actions
+    table.grid th, table.grid td { border: 1px solid #ccc; padding: 6px; text-align: center; background-color: #fff; }
     table.grid th { background: #eee; }
     table.rank th, table.rank td { border: 1px solid #ddd; padding: 8px; text-align: center; background-color: #fff; }
     table.rank th { background: #333; color: #fff; }
@@ -43,14 +43,10 @@
     + '/pub?gid=1242680440&single=true&output=csv';
 
   const TEAMS = {
-    'Mężczyźni': {
-      'A': ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
-      'B': ['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski']
-    },
-    'Kobiety': {
-      'A': ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
-      'B': ['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik']
-    }
+    'Mężczyźni': { 'A': ['Gdańsk Bukowski Serwis','Kołobrzeg','Rybnik Team','Poznań Biały'],
+                   'B': ['Zielona Góra','TICINO POLAND','SANICOGOLDLUX','Poznań Niebieski'] },
+    'Kobiety':    { 'A': ['KOBIETY NA BOISKA Łódź','Lejdis Wrocław','Basket Team Gdańsk','Twarde Babki Toruń'],
+                   'B': ['Chyże Laski Poznań','Warszawa','Rozważne i Romantyczne Rybnik'] }
   };
 
   async function fetchResults() {
@@ -58,7 +54,7 @@
     const text = await res.text();
     const lines = text.trim().split(/\r?\n/).slice(1);
     return lines.flatMap(line => {
-      const parts = line.split(/,|;/).map(c => c.replace(/^\"|\"$/g, '').trim());
+      const parts = line.split(/,|;/).map(c => c.replace(/^"|"$/g, '').trim());
       const [ , teamA, , teamB, rawA ] = parts;
       const [ , teamC, , teamD, rawB ] = parts.slice(6);
       return [
@@ -102,9 +98,11 @@
     return stats;
   }
 
+  // comparator with tiebreakers: pts, diff, head-to-head, name
   function compareTeams(a, b) {
     if (b.pts !== a.pts) return b.pts - a.pts;
     if (b.diff !== a.diff) return b.diff - a.diff;
+    // head-to-head
     const r = allResults.find(x =>
       (x.teamA === a.name && x.teamB === b.name) ||
       (x.teamA === b.name && x.teamB === a.name)
@@ -112,7 +110,7 @@
     if (r) {
       const [sA, sB] = r.rawScore.split(':').map(Number);
       if (r.teamA === a.name) {
-        if (sA !== sB) return sB - sA;
+        if (sA !== sB) return sB - sA; // winner negative -> a before
       } else {
         if (sB !== sA) return sA - sB;
       }
@@ -122,7 +120,7 @@
 
   function renderGrid(stats, cat, grp) {
     const names = TEAMS[cat][grp];
-    let html = '<table class=\"grid\"><thead><tr><th></th>' + names.map(n => `<th>${n}</th>`).join('') + '</tr></thead><tbody>';
+    let html = '<table class="grid"><thead><tr><th></th>' + names.map(n => `<th>${n}</th>`).join('') + '</tr></thead><tbody>';
     names.forEach(rn => {
       html += `<tr><td>${rn}</td>`;
       names.forEach(cn => {
@@ -145,10 +143,10 @@
   function renderRank(stats, cat, grp) {
     const arr = Object.values(stats[cat][grp]);
     arr.sort(compareTeams);
-    let html = '<table class=\"rank\"><thead><tr><th>#</th><th>Drużyna</th><th>M</th><th>Pts</th><th>For</th><th>Against</th><th>Diff</th></tr></thead><tbody>';
+    let html = '<table class="rank"><thead><tr><th>#</th><th>Drużyna</th><th>M</th><th>Pts</th><th>For</th><th>Against</th><th>Diff</th></tr></thead><tbody>';
     arr.forEach((t, i) => {
       const cls = (i < 2 && t.play > 0) ? 'highlight' : '';
-      html += `<tr class=\"${cls}\"><td>${i + 1}</td><td>${t.name}</td><td>${t.play}</td><td>${t.pts}</td><td>${t.for}</td><td>${t.against}</td><td>${t.diff}</td></tr>`;
+      html += `<tr class="${cls}"><td>${i + 1}</td><td>${t.name}</td><td>${t.play}</td><td>${t.pts}</td><td>${t.for}</td><td>${t.against}</td><td>${t.diff}</td></tr>`;
     });
     return html + '</tbody></table>';
   }
