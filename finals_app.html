@@ -4,122 +4,126 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Finał turnieju Goats 2</title>
-  <!-- React z CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script>
   <style>
     body {
-      font-family: sans-serif;
       margin: 0;
-      padding: 20px;
+      font-family: sans-serif;
       background: url('Goats2.png') no-repeat center center fixed;
       background-size: cover;
     }
     .container {
-      background-color: rgba(255, 255, 255, 0.95);
-      padding: 20px 40px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0,0,0,0.2);
-      max-width: 90%;
-      margin: 0 auto;
-      overflow-x: auto;
+      max-width: 1200px;
+      margin: auto;
+      background: white;
+      border-radius: 10px;
+      padding: 20px;
+      margin-top: 30px;
+    }
+    h1 {
+      text-align: center;
+      margin-bottom: 20px;
+    }
+    .tables-row {
+      display: flex;
+      justify-content: space-between;
+      flex-wrap: wrap;
+      gap: 20px;
     }
     table {
       border-collapse: collapse;
       width: 100%;
-      table-layout: fixed;
     }
-    td {
+    th, td {
       border: 1px solid #ccc;
-      padding: 8px;
+      padding: 6px;
       text-align: center;
-      white-space: nowrap;
+    }
+    .header {
+      background: #eee;
+      font-weight: bold;
     }
     .pink { background-color: #fde2e2; }
     .blue { background-color: #dce9f9; }
     .gray { background-color: #e5e5e5; }
     .bold { font-weight: bold; }
-    .center { text-align: center; }
-    .empty-row td {
-      border: none;
-      background: none;
-      height: 10px;
-    }
-    button {
+    .court-label {
+      text-align: center;
+      font-weight: bold;
       margin-bottom: 10px;
-      padding: 6px 12px;
-      font-size: 1rem;
+    }
+    .table-wrapper {
+      width: 48%;
+    }
+    .final-wrapper {
+      margin-top: 30px;
     }
   </style>
 </head>
 <body>
   <div class="container">
-    <h1 class="center">Finał turnieju Goats 2</h1>
     <button onclick="fetchData()">Odśwież dane</button>
-    <div id="root">Ładowanie danych...</div>
+    <h1>Finał turnieju Goats 2</h1>
+    <div class="tables-row">
+      <div class="table-wrapper">
+        <div class="court-label">Boisko A</div>
+        <table id="courtA"></table>
+      </div>
+      <div class="table-wrapper">
+        <div class="court-label">Boisko B</div>
+        <table id="courtB"></table>
+      </div>
+    </div>
+    <div class="final-wrapper">
+      <table id="final"></table>
+    </div>
   </div>
-  <script type="text/javascript">
-    const { useState, useEffect } = React;
 
-    const GOOGLE_SHEET_CSV_URL =
-      "https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv";
+  <script>
+    const CSV_URL = 'https://docs.google.com/spreadsheets/d/e/2PACX-1vRHw8kX-ehVxqRrBxKQRAH9EySHdQUfPwWEae-llcCwEp-ba7-Oh82Llo-8rHCszQFJiKC7SZt8KaVg/pub?gid=1242680440&single=true&output=csv';
 
-    function App() {
-      const [data, setData] = useState([]);
-
-      const fetchData = async () => {
-        try {
-          const response = await fetch(GOOGLE_SHEET_CSV_URL);
-          const text = await response.text();
-          const parsed = Papa.parse(text).data;
-          const filtered = parsed.slice(40, 59).map(row => row.slice(0, 11));
-          setData(filtered);
-        } catch (error) {
-          console.error("Error fetching data:", error);
-        }
-      };
-
-      useEffect(() => {
-        fetchData();
-        const interval = setInterval(fetchData, 3 * 60 * 1000);
-        return () => clearInterval(interval);
-      }, []);
-
-      const getRowClass = (rowIndex) => {
-        const pinkRows = [1, 5, 7, 14];
-        const blueRows = [3, 4, 5, 6, 15];
-        const grayRows = [0, 2, 8, 13, 16];
-        if (pinkRows.includes(rowIndex)) return "pink";
-        if (blueRows.includes(rowIndex)) return "blue";
-        if (grayRows.includes(rowIndex)) return "gray bold center";
-        return "";
-      };
-
-      return React.createElement(
-        "table",
-        null,
-        React.createElement(
-          "tbody",
-          null,
-          data.map((row, rowIndex) =>
-            React.createElement(
-              "tr",
-              { key: rowIndex, className: getRowClass(rowIndex) },
-              row.map((cell, colIndex) =>
-                React.createElement("td", { key: colIndex }, cell)
-              )
-            )
-          )
-        )
-      );
+    function getClass(rowIndex) {
+      const pinkRows = [1, 5, 7, 14];
+      const blueRows = [3, 4, 5, 6, 15];
+      const grayRows = [0, 2, 8, 13, 16];
+      if (pinkRows.includes(rowIndex)) return 'pink';
+      if (blueRows.includes(rowIndex)) return 'blue';
+      if (grayRows.includes(rowIndex)) return 'gray';
+      return '';
     }
 
-    const fetchData = () => {
-      ReactDOM.createRoot(document.getElementById("root")).render(
-        React.createElement(App)
-      );
-    };
+    async function fetchData() {
+      const res = await fetch(CSV_URL);
+      const text = await res.text();
+      const parsed = Papa.parse(text).data;
+      const filtered = parsed.slice(40, 59).map(row => row.slice(0, 11));
+      renderTables(filtered);
+    }
+
+    function renderTables(data) {
+      const courtA = data.map(row => row.slice(0, 6));
+      const courtB = data.map(row => row.slice(6, 11));
+
+      const buildTable = (rows, header = '') => {
+        let html = '';
+        if (header) {
+          html += `<tr><th colspan="${rows[0].length}" class="bold">${header}</th></tr>`;
+        }
+        if (header === 'Boisko A') {
+          html += '<tr><th></th><th colspan="3">Półfinał Kobiet / Mężczyzn</th><th colspan="1">Wynik</th></tr>';
+        }
+        html += rows.map((row, rowIndex) =>
+          `<tr class="${getClass(rowIndex)}">${row.map(cell => `<td>${cell}</td>`).join('')}</tr>`
+        ).join('');
+        return html;
+      }
+
+      document.getElementById('courtA').innerHTML = buildTable(courtA, 'Boisko A');
+      document.getElementById('courtB').innerHTML = buildTable(courtB, 'Boisko B');
+      document.getElementById('final').innerHTML = buildTable(data.slice(17), 'Finały');
+    }
 
     fetchData();
   </script>
