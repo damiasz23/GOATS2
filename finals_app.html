@@ -3,68 +3,62 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>GOATS2 - Final</title>
-  <style>
-    body {
-      margin: 0;
-      padding: 40px;
-      font-family: sans-serif;
-      background: url('Goats2.png') no-repeat center center fixed;
-      background-size: cover;
-    }
-    #root {
-      background-color: rgba(255, 255, 255, 0.92);
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.3);
-      max-width: 1200px;
-      margin: auto;
-    }
-    h1 {
-      text-align: center;
-      margin-top: 0;
-    }
-    button {
-      padding: 8px 16px;
-      font-size: 1rem;
-      margin-bottom: 20px;
-      cursor: pointer;
-      border-radius: 6px;
-      border: none;
-      background-color: #333;
-      color: white;
-    }
-    table {
-      width: 100%;
-      border-collapse: collapse;
-      margin-bottom: 20px;
-    }
-    td {
-      padding: 10px;
-      border: 1px solid #ccc;
-      text-align: center;
-      font-size: 14px;
-      background-color: white;
-    }
-    .pink td { background-color: #FDE2E2 !important; }
-    .blue td { background-color: #DCE9F9 !important; }
-    .gray td {
-      background-color: #E5E5E5 !important;
-      font-weight: bold;
-      text-align: center;
-    }
-    .spacer td {
-      background: transparent !important;
-      border: none !important;
-      height: 20px;
-    }
-  </style>
+  <title>Finał turnieju Goats 2</title>
+  <!-- React z CDN -->
   <script crossorigin src="https://unpkg.com/react@18/umd/react.development.js"></script>
   <script crossorigin src="https://unpkg.com/react-dom@18/umd/react-dom.development.js"></script>
   <script src="https://unpkg.com/papaparse@5.3.2/papaparse.min.js"></script>
+  <style>
+    body {
+      font-family: sans-serif;
+      margin: 0;
+      padding: 20px;
+      background: url('Goats2.png') no-repeat center center fixed;
+      background-size: cover;
+    }
+    .container {
+      background-color: rgba(255, 255, 255, 0.95);
+      padding: 20px 40px;
+      border-radius: 12px;
+      box-shadow: 0 0 20px rgba(0,0,0,0.2);
+      max-width: 90%;
+      margin: 0 auto;
+      overflow-x: auto;
+    }
+    table {
+      border-collapse: collapse;
+      width: 100%;
+      table-layout: fixed;
+    }
+    td {
+      border: 1px solid #ccc;
+      padding: 8px;
+      text-align: center;
+      white-space: nowrap;
+    }
+    .pink { background-color: #fde2e2; }
+    .blue { background-color: #dce9f9; }
+    .gray { background-color: #e5e5e5; }
+    .bold { font-weight: bold; }
+    .center { text-align: center; }
+    .empty-row td {
+      border: none;
+      background: none;
+      height: 10px;
+    }
+    button {
+      margin-bottom: 10px;
+      padding: 6px 12px;
+      font-size: 1rem;
+    }
+  </style>
 </head>
 <body>
-  <div id="root"></div>
+  <div class="container">
+    <h1 class="center">Finał turnieju Goats 2</h1>
+    <button onclick="fetchData()">Odśwież dane</button>
+    <div id="root">Ładowanie danych...</div>
+  </div>
   <script type="text/javascript">
     const { useState, useEffect } = React;
 
@@ -93,56 +87,41 @@
       }, []);
 
       const getRowClass = (rowIndex) => {
-        if ([1, 5, 7, 14].includes(rowIndex)) return "pink";
-        if ([3, 4, 5, 6, 15].includes(rowIndex)) return "blue";
-        if ([0, 2, 8, 13, 16].includes(rowIndex)) return "gray";
+        const pinkRows = [1, 5, 7, 14];
+        const blueRows = [3, 4, 5, 6, 15];
+        const grayRows = [0, 2, 8, 13, 16];
+        if (pinkRows.includes(rowIndex)) return "pink";
+        if (blueRows.includes(rowIndex)) return "blue";
+        if (grayRows.includes(rowIndex)) return "gray bold center";
         return "";
       };
 
-      const isSpacer = (rowIndex) => [2, 6, 12].includes(rowIndex);
-      const isMergedRow = (rowIndex) => [0, 2, 8, 13, 16].includes(rowIndex);
-
       return React.createElement(
-        "div",
+        "table",
         null,
-        React.createElement("h1", null, "Tabela z Arkusza Google"),
         React.createElement(
-          "button",
-          { onClick: fetchData },
-          "Odśwież dane"
-        ),
-        React.createElement(
-          "table",
+          "tbody",
           null,
-          React.createElement(
-            "tbody",
-            null,
-            data.map((row, rowIndex) => {
-              if (isSpacer(rowIndex)) {
-                return React.createElement("tr", { key: rowIndex, className: "spacer" },
-                  React.createElement("td", { colSpan: row.length }, "")
-                );
-              } else if (isMergedRow(rowIndex)) {
-                return React.createElement("tr", { key: rowIndex, className: getRowClass(rowIndex) },
-                  React.createElement("td", {
-                    colSpan: row.length,
-                    style: { fontWeight: 'bold', textAlign: 'center' }
-                  }, row[0])
-                );
-              } else {
-                return React.createElement("tr", { key: rowIndex, className: getRowClass(rowIndex) },
-                  row.map((cell, colIndex) => React.createElement("td", { key: colIndex }, cell))
-                );
-              }
-            })
+          data.map((row, rowIndex) =>
+            React.createElement(
+              "tr",
+              { key: rowIndex, className: getRowClass(rowIndex) },
+              row.map((cell, colIndex) =>
+                React.createElement("td", { key: colIndex }, cell)
+              )
+            )
           )
         )
       );
     }
 
-    ReactDOM.createRoot(document.getElementById("root")).render(
-      React.createElement(App)
-    );
+    const fetchData = () => {
+      ReactDOM.createRoot(document.getElementById("root")).render(
+        React.createElement(App)
+      );
+    };
+
+    fetchData();
   </script>
 </body>
 </html>
