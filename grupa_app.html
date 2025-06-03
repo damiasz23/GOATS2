@@ -4,35 +4,73 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>GOATS 2 faza grupowa</title>
-  <style>
-    body {
-      font-family: sans-serif;
-      margin: 20px;
-      background: url('Goats2.png') no-repeat center center fixed;
-      background-size: cover;
-    }
-    #app {
-      background-color: rgba(255, 255, 255, 0.95);
-      padding: 30px;
-      border-radius: 12px;
-      box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
-    }
-    button#refresh { margin-bottom: 10px; padding: 6px 12px; font-size: 1rem; }
-    .category { margin-bottom: 40px; }
-    .category h1 { font-size: 1.5rem; margin: 0; }
-    .group { margin-top: 20px; }
-    .group h2 { font-size: 1.25rem; margin: 0 0 10px; }
-    table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
-    table.grid th, table.grid td { border: 1px solid #ccc; padding: 6px; text-align: center; background: white; }
-    table.grid th { background: #eee; }
-    table.rank th, table.rank td { border: 1px solid #ddd; padding: 8px; text-align: center; background: white; }
-    table.rank th { background: #333; color: #fff; }
-    tr.highlight td { background: rgba(255,215,0,0.3); }
-    .category.men table.grid td { background: rgba(173,216,230,0.3); }
-    .category.men tr.highlight td { background: rgba(0,0,255,0.3); color: #fff; }
-    .category.women table.grid td { background: rgba(255,182,193,0.3); }
-    .category.women tr.highlight td { background: rgba(255,0,255,0.3); color: #fff; }
-  </style>
+ <style>
+  body {
+    font-family: sans-serif;
+    margin: 20px;
+    background: url('Goats2.png') no-repeat center center fixed;
+    background-size: cover;
+  }
+  #app {
+    background-color: rgba(255, 255, 255, 0.95);
+    padding: 30px;
+    border-radius: 12px;
+    box-shadow: 0 0 20px rgba(0, 0, 0, 0.2);
+    /* DODANE: pozwól przewijać całą sekcję w razie bardzo wąskiego viewportu */
+    overflow-x: auto;
+  }
+  button#refresh { 
+    margin-bottom: 10px; 
+    padding: 6px 12px; 
+    font-size: 1rem; 
+  }
+  .category { margin-bottom: 40px; }
+  .category h1 { font-size: 1.5rem; margin: 0; }
+  .group { 
+    margin-top: 20px; 
+    /* DODANE: pozwala przewijać poziomo samą tabelę grupy */
+    overflow-x: auto; 
+  }
+  .group h2 { font-size: 1.25rem; margin: 0 0 10px; }
+  table { width: 100%; border-collapse: collapse; margin-bottom: 10px; }
+  
+  /* siatka wyników */
+  table.grid th, table.grid td {
+    border: 1px solid #ccc;
+    padding: 6px;
+    text-align: center;
+    background: white;
+    /* DODANE: nie pozwalaj zawijać tekstu w komórkach */
+    white-space: nowrap;
+  }
+  table.grid th { background: #eee; }
+  
+  /* ranking */
+  table.rank th, table.rank td {
+    border: 1px solid #ddd;
+    padding: 8px;
+    text-align: center;
+    background: white;
+    /* DODANE: nie pozwalaj zawijać tekstu w komórkach */
+    white-space: nowrap;
+  }
+  table.rank th { background: #333; color: #fff; }
+  
+  tr.highlight td { background: rgba(255,215,0,0.3); }
+  .category.men table.grid td { background: rgba(173,216,230,0.3); }
+  .category.men tr.highlight td { background: rgba(0,0,255,0.3); color: #fff; }
+  .category.women table.grid td { background: rgba(255,182,193,0.3); }
+  .category.women tr.highlight td { background: rgba(255,0,255,0.3); color: #fff; }
+
+  /* ========== DODATKOWE REGUŁY ========== */
+  /* Minimum szerokości tabel, aby w węższych widokach pojawił się scroll */
+  table.grid {
+    min-width: 500px;
+  }
+  table.rank {
+    min-width: 500px;
+  }
+</style>
 </head>
 <body>
   <button id="refresh">Odśwież</button>
